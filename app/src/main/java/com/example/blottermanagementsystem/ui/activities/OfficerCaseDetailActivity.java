@@ -27,7 +27,6 @@ import com.example.blottermanagementsystem.ui.adapters.ImageAdapter;
 import com.example.blottermanagementsystem.ui.adapters.InvestigationStepAdapter;
 import com.example.blottermanagementsystem.ui.adapters.VideoAdapter;
 import com.example.blottermanagementsystem.ui.dialogs.AddSuspectDialogFragment;
-import com.example.blottermanagementsystem.ui.dialogs.AddEvidenceDialogFragment;
 import com.example.blottermanagementsystem.ui.dialogs.AddWitnessDialogFragment;
 import com.example.blottermanagementsystem.ui.dialogs.DocumentResolutionDialogFragment;
 import com.example.blottermanagementsystem.ui.dialogs.KPFormsDialogFragment;
@@ -63,7 +62,8 @@ public class OfficerCaseDetailActivity extends AppCompatActivity {
     private MaterialButton btnUpdateStatus, btnEdit, btnDelete, btnResolveCase;
     private MaterialButton btnStartInvestigation;  // ← Dedicated Start Investigation button
     private MaterialButton btnViewPersonHistory;  // ← View person history button
-    private MaterialButton btnAddWitness, btnAddSuspect, btnAddEvidence, btnCreateHearing, btnDocumentResolution, btnKPForms;
+    private MaterialButton btnAddWitness, btnAddSuspect, btnCreateHearing, btnDocumentResolution, btnKPForms;
+    // ❌ REMOVED: btnAddEvidence - Officer focuses on user-provided evidence only
     
     // ScrollView for content
     private androidx.core.widget.NestedScrollView nestedScrollView;
@@ -163,7 +163,7 @@ public class OfficerCaseDetailActivity extends AppCompatActivity {
         // Investigation Feature Buttons
         btnAddWitness = findViewById(R.id.btnAddWitness);
         btnAddSuspect = findViewById(R.id.btnAddSuspect);
-        btnAddEvidence = findViewById(R.id.btnAddEvidence);
+        // ❌ REMOVED: btnAddEvidence - Officer focuses on user-provided evidence only
         btnCreateHearing = findViewById(R.id.btnCreateHearing);
         btnDocumentResolution = findViewById(R.id.btnDocumentResolution);
         btnKPForms = findViewById(R.id.btnKPForms);
@@ -265,13 +265,12 @@ public class OfficerCaseDetailActivity extends AppCompatActivity {
                     openAddWitness();
                 } else if ("A2".equals(stepId)) {
                     openAddSuspect();
-                } else if ("A3".equals(stepId)) {
-                    openAddEvidence();
                 } else if ("A4".equals(stepId)) {
                     openCreateHearing();
                 } else if ("A5".equals(stepId)) {
                     openDocumentResolution();
                 }
+                // ❌ REMOVED: "A3" (Add Evidence) - Officer focuses on user-provided evidence only
             }
             @Override
             public void onViewWitnesses(int reportId) {}
@@ -503,22 +502,16 @@ public class OfficerCaseDetailActivity extends AppCompatActivity {
         actionSuspect.setEnabled(witnessCount > 0); // ✅ Enabled if witness exists
         investigationActionSteps.add(actionSuspect);
         
-        // Action 3: Gather Evidence (DISABLED - unlock after suspect added)
-        InvestigationStep actionEvidence = new InvestigationStep("A3", "Gather Evidence", "Upload photos, videos, or documents", "gather_evidence");
-        actionEvidence.setCompleted(false);
-        actionEvidence.setInProgress(false);
-        actionEvidence.setActionText("Add Evidence");
-        actionEvidence.setActionIcon(R.drawable.ic_evidence);
-        actionEvidence.setEnabled(suspectCount > 0); // ✅ Enabled if suspect exists
-        investigationActionSteps.add(actionEvidence);
+        // ❌ REMOVED: Action 3: Gather Evidence - Officer focuses on user-provided evidence only
+        // Evidence is now view-only for officers (uploaded by users)
         
-        // Action 4: Schedule Hearing (DISABLED - unlock after evidence added)
+        // Action 4: Schedule Hearing (DISABLED - unlock after suspect added)
         InvestigationStep actionHearing = new InvestigationStep("A4", "Schedule Hearings", "Conduct hearings with involved parties", "schedule_hearing");
         actionHearing.setCompleted(false);
         actionHearing.setInProgress(false);
         actionHearing.setActionText("Schedule Hearing");
         actionHearing.setActionIcon(R.drawable.ic_hearing);
-        actionHearing.setEnabled(evidenceCount > 0); // ✅ Enabled if evidence exists
+        actionHearing.setEnabled(suspectCount > 0); // ✅ Enabled if suspect exists (was: evidenceCount > 0)
         investigationActionSteps.add(actionHearing);
         
         // Action 5: Document Resolution (DISABLED - unlock after hearing scheduled)
@@ -570,9 +563,7 @@ public class OfficerCaseDetailActivity extends AppCompatActivity {
         if (btnAddSuspect != null) {
             btnAddSuspect.setOnClickListener(v -> openAddSuspect());
         }
-        if (btnAddEvidence != null) {
-            btnAddEvidence.setOnClickListener(v -> openAddEvidence());
-        }
+        // ❌ REMOVED: btnAddEvidence listener - Officer focuses on user-provided evidence only
         if (btnCreateHearing != null) {
             btnCreateHearing.setOnClickListener(v -> openCreateHearing());
         }
@@ -1454,12 +1445,7 @@ public class OfficerCaseDetailActivity extends AppCompatActivity {
         dialog.show(getSupportFragmentManager(), "AddSuspect");
     }
     
-    private void openAddEvidence() {
-        AddEvidenceDialogFragment dialog = AddEvidenceDialogFragment.newInstance(reportId, evidence -> {
-            // Evidence added successfully
-        });
-        dialog.show(getSupportFragmentManager(), "AddEvidence");
-    }
+    // ❌ REMOVED: openAddEvidence() - Officer focuses on user-provided evidence only
     
     private void openCreateHearing() {
         ScheduleHearingDialogFragment dialog = ScheduleHearingDialogFragment.newInstance(reportId, hearing -> {
