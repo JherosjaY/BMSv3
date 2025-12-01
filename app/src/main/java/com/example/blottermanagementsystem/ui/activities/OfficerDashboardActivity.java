@@ -122,11 +122,16 @@ public class OfficerDashboardActivity extends BaseActivity {
                     if (isAssignedToOfficer) {
                         total++;
                         recentCases.add(report);
-                        if ("pending".equals(status) || "assigned".equals(status)) {
+                        // Match the filtering logic in OfficerMyCasesActivity
+                        // Only count "Assigned" status for pending (not "pending")
+                        if ("assigned".equalsIgnoreCase(status)) {
+                            // "Assigned" status - not yet started investigation
                             pending++;
-                        } else if ("ongoing".equals(status) || "in progress".equals(status)) {
+                        } else if ("ongoing".equalsIgnoreCase(status) || "in progress".equalsIgnoreCase(status)) {
+                            // "Ongoing" or "In Progress" status - investigation started
                             active++;
-                        } else if ("resolved".equals(status) || "closed".equals(status)) {
+                        } else if ("resolved".equalsIgnoreCase(status) || "closed".equalsIgnoreCase(status)) {
+                            // "Resolved" or "Closed" status - case completed
                             resolved++;
                         }
                     }
