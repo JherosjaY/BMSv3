@@ -26,4 +26,10 @@ public interface EvidenceDao {
     
     @Query("DELETE FROM evidence WHERE blotterReportId = :reportId")
     void deleteEvidenceByReportId(int reportId);
+    
+    @Query("SELECT COUNT(*) FROM evidence WHERE blotterReportId = :reportId")
+    int getEvidenceCountByReport(int reportId);
+    
+    @Query("SELECT * FROM evidence WHERE blotterReportId = :reportId")
+    List<Evidence> getEvidenceByReport(int reportId);
 }

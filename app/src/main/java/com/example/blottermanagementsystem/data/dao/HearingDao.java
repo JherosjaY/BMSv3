@@ -35,4 +35,10 @@ public interface HearingDao {
 
     @Delete
     void deleteHearing(Hearing hearing);
+    
+    @Query("SELECT COUNT(*) FROM hearings WHERE blotterReportId = :reportId")
+    int getHearingCountByReport(int reportId);
+    
+    @Query("SELECT * FROM hearings WHERE blotterReportId = :reportId ORDER BY hearingDate DESC")
+    List<Hearing> getHearingsByReport(int reportId);
 }

@@ -47,6 +47,8 @@ public class PreferencesManager {
     
     public void setLoggedIn(boolean value) {
         prefs.edit().putBoolean(KEY_IS_LOGGED_IN, value).commit();
+        android.util.Log.d("PreferencesManager", "✅ setLoggedIn(" + value + ") - Value saved to preferences");
+        android.util.Log.d("PreferencesManager", "✅ Verification: isLoggedIn() = " + isLoggedIn());
     }
     
     // ==================== User ID ====================
@@ -125,7 +127,8 @@ public class PreferencesManager {
     }
     
     public void setOnboardingCompleted(boolean value) {
-        prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETED, value).apply();
+        prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETED, value).commit();
+        android.util.Log.d("PreferencesManager", "✅ setOnboardingCompleted(" + value + ") - Saved synchronously");
     }
     
     // ==================== Guide ====================
@@ -218,7 +221,7 @@ public class PreferencesManager {
     public void setHasSelectedProfilePicture(boolean value) {
         int currentUserId = getUserId();
         if (currentUserId != -1) {
-            prefs.edit().putBoolean("has_selected_pfp_user_" + currentUserId, value).apply();
+            prefs.edit().putBoolean("has_selected_pfp_user_" + currentUserId, value).commit();
         } else {
             prefs.edit().putBoolean(KEY_HAS_SELECTED_PFP, value).apply();
         }
@@ -373,7 +376,8 @@ public class PreferencesManager {
     }
     
     public void setPermissionsGranted(boolean value) {
-        prefs.edit().putBoolean(KEY_PERMISSIONS_GRANTED, value).apply();
+        prefs.edit().putBoolean(KEY_PERMISSIONS_GRANTED, value).commit();
+        android.util.Log.d("PreferencesManager", "✅ setPermissionsGranted(" + value + ") - Saved synchronously");
     }
     
     // ==================== Save User Session ====================
@@ -396,6 +400,7 @@ public class PreferencesManager {
     // ==================== Clear Session ====================
     
     public void clearSession() {
+        int currentUserId = getUserId();
         SharedPreferences.Editor editor = prefs.edit();
         editor.remove(KEY_IS_LOGGED_IN);
         editor.remove(KEY_USER_ID);
@@ -411,19 +416,24 @@ public class PreferencesManager {
         editor.remove(KEY_GOOGLE_PHOTO_URL);
         editor.remove(KEY_IS_GOOGLE_ACCOUNT);
         
-        // DON'T remove password_changed flag - officer should not need to change password on every login
+        // ✅ IMPORTANT: DO NOT remove password_changed flag on logout!
+        // Each officer's password_changed flag is stored per-user ID (password_changed_user_X)
+        // Removing it would force password change on next login even if already changed
+        // Password should only be reset if admin explicitly resets it
+        
         // DON'T remove per-user profile data (profile_image_uri_*, profile_emoji_*, etc.)
         // DON'T remove FCM token - it's device-specific, not user-specific
         // This allows users to keep their profile pictures when they log back in
         editor.apply();
         
-        android.util.Log.d("PreferencesManager", "✅ Session cleared (password flags preserved for next login)");
+        android.util.Log.d("PreferencesManager", "✅ Session cleared (password_changed flag preserved for each officer)");
     }
     
     // ==================== Generic Helpers ====================
     
     public void saveBoolean(String key, boolean value) {
-        prefs.edit().putBoolean(key, value).apply();
+        prefs.edit().putBoolean(key, value).commit();
+        android.util.Log.d("PreferencesManager", "✅ saveBoolean(" + key + ", " + value + ") - Saved synchronously");
     }
     
     public boolean getBoolean(String key, boolean defaultValue) {

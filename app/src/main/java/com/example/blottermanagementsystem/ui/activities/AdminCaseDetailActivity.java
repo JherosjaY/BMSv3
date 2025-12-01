@@ -5,23 +5,30 @@ import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.blottermanagementsystem.R;
 import com.example.blottermanagementsystem.data.database.BlotterDatabase;
 import com.example.blottermanagementsystem.data.entity.BlotterReport;
 import com.example.blottermanagementsystem.data.entity.Officer;
-import com.example.blottermanagementsystem.ui.adapters.ImageAdapter;
-import com.example.blottermanagementsystem.ui.adapters.SelectableOfficerAdapter;
-import com.example.blottermanagementsystem.ui.adapters.VideoAdapter;
-import com.example.blottermanagementsystem.utils.GlobalLoadingManager;
-import androidx.recyclerview.widget.DividerItemDecoration;
+import com.example.blottermanagementsystem.utils.MediaManager;
 import com.example.blottermanagementsystem.utils.NotificationHelper;
 import com.example.blottermanagementsystem.utils.PreferencesManager;
+import com.example.blottermanagementsystem.utils.ApiClient;
+import com.example.blottermanagementsystem.utils.NetworkMonitor;
+import com.example.blottermanagementsystem.utils.TimelineUpdateManager;
+import com.example.blottermanagementsystem.data.model.InvestigationStep;
+import com.example.blottermanagementsystem.utils.GlobalLoadingManager;
+import com.example.blottermanagementsystem.ui.adapters.ImageAdapter;
+import com.example.blottermanagementsystem.ui.adapters.VideoAdapter;
+import com.example.blottermanagementsystem.ui.adapters.InvestigationStepAdapter;
+import androidx.recyclerview.widget.DividerItemDecoration;
+import androidx.core.content.ContextCompat;
+import com.example.blottermanagementsystem.ui.adapters.SelectableOfficerAdapter;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import java.text.SimpleDateFormat;
@@ -50,6 +57,12 @@ public class AdminCaseDetailActivity extends BaseActivity {
     private RecyclerView recyclerImages, recyclerVideos;
     private ImageAdapter imageAdapter;
     private VideoAdapter videoAdapter;
+    
+    // Investigation Timeline
+    private RecyclerView rvInvestigationSteps;
+    private InvestigationStepAdapter stepAdapter;
+    private List<InvestigationStep> investigationSteps = new ArrayList<>();
+    private boolean isTimelineInitializing = false;  // Prevent concurrent initialization
     
     // Data
     private BlotterDatabase database;
@@ -124,6 +137,37 @@ public class AdminCaseDetailActivity extends BaseActivity {
     }
     
     private void setupRecyclerViews() {
+        // Investigation Timeline RecyclerView (READ-ONLY for admin)
+        rvInvestigationSteps = findViewById(R.id.rvInvestigationSteps);
+        stepAdapter = new InvestigationStepAdapter(investigationSteps, new InvestigationStepAdapter.OnStepActionListener() {
+            @Override
+            public void onStepAction(InvestigationStep step) {
+                android.util.Log.d("AdminCaseDetail", "Timeline step clicked: " + step.getTitle());
+            }
+            @Override
+            public void onViewWitnesses(int reportId) {
+                showWitnessesDialog(reportId);
+            }
+            @Override
+            public void onViewSuspects(int reportId) {
+                showSuspectsDialog(reportId);
+            }
+            @Override
+            public void onViewEvidence(int reportId) {
+                showEvidenceDialog(reportId);
+            }
+            @Override
+            public void onViewHearings(int reportId) {
+                showHearingsDialog(reportId);
+            }
+            @Override
+            public void onViewResolution(int reportId) {
+                showResolutionDialog(reportId);
+            }
+        });
+        rvInvestigationSteps.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+        rvInvestigationSteps.setAdapter(stepAdapter);
+        
         // Images RecyclerView
         imageAdapter = new ImageAdapter(imageList, new ImageAdapter.OnImageClickListener() {
             @Override
@@ -159,6 +203,207 @@ public class AdminCaseDetailActivity extends BaseActivity {
         LinearLayoutManager videoLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
         recyclerVideos.setLayoutManager(videoLayoutManager);
         recyclerVideos.setAdapter(videoAdapter);
+    }
+    
+    /**
+     * Initialize the investigation timeline with 7 steps (READ-ONLY for Admin)
+     * MUST be called on background thread due to database access
+     */
+    private void initializeInvestigationTimeline() {
+        // ✅ Prevent concurrent initialization (avoid duplicates)
+        if (isTimelineInitializing) {
+            android.util.Log.d("AdminCaseDetail", "⚠️ Timeline initialization already in progress, skipping...");
+            return;
+        }
+        
+        isTimelineInitializing = true;
+        
+        java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                investigationSteps.clear();
+                
+                // Step 1: Case Created (Always completed)
+                InvestigationStep step1 = new InvestigationStep("1", "Case Created", "Initial report submitted", "case_created");
+                step1.setCompleted(true);
+                investigationSteps.add(step1);
+                
+                // Step 2: Case Assigned
+                // ✅ Check if case has been assigned to an officer
+                InvestigationStep step2 = new InvestigationStep("2", "Case Assigned", "Waiting for officer assignment", "case_assigned");
+                boolean isCaseAssigned = currentReport != null && 
+                    currentReport.getAssignedOfficer() != null && 
+                    !currentReport.getAssignedOfficer().trim().isEmpty();
+                
+                step2.setCompleted(false);
+                if (isCaseAssigned) {
+                    // Case has been assigned - show as COMPLETED (checkmark)
+                    step2.setCompleted(true);
+                    step2.setInProgress(false);
+                    android.util.Log.d("AdminCaseDetail", "✅ Case Assigned: COMPLETED (assigned to officer)");
+                } else {
+                    // Case not assigned yet - show as IN PROGRESS (hourglass - waiting for assignment)
+                    step2.setInProgress(true);
+                    android.util.Log.d("AdminCaseDetail", "⏳ Case Assigned: IN PROGRESS (waiting for assignment)");
+                }
+                investigationSteps.add(step2);
+                
+                // Step 3: Investigation Started
+                // ✅ Check if investigation has started (case status is ONGOING)
+                InvestigationStep step3 = new InvestigationStep("3", "Investigation Started", "Officer begins investigation", "investigation_started");
+                boolean isInvestigationStarted = currentReport != null && 
+                    currentReport.getStatus() != null && 
+                    (currentReport.getStatus().equalsIgnoreCase("ONGOING") || 
+                     currentReport.getStatus().equalsIgnoreCase("IN PROGRESS"));
+                
+                step3.setCompleted(false);
+                if (isInvestigationStarted) {
+                    // Investigation has started - show as COMPLETED (checkmark)
+                    step3.setCompleted(true);
+                    step3.setInProgress(false);
+                    android.util.Log.d("AdminCaseDetail", "✅ Investigation Started: COMPLETED");
+                } else if (isCaseAssigned) {
+                    // Case assigned but investigation not started - show as IN PROGRESS (hourglass - current active step)
+                    step3.setInProgress(true);
+                    android.util.Log.d("AdminCaseDetail", "⏳ Investigation Started: IN PROGRESS (waiting to start)");
+                } else {
+                    // Case not assigned yet - show as PENDING (red circle)
+                    step3.setInProgress(false);
+                    android.util.Log.d("AdminCaseDetail", "⭕ Investigation Started: PENDING");
+                }
+                investigationSteps.add(step3);
+                
+                // Step 4: Witnesses & Evidence Collected
+                // ✅ Check if witness, suspect, AND evidence all exist
+                InvestigationStep step4 = new InvestigationStep("4", "Witnesses & Evidence Collected", "Gathering case information", "evidence_collected");
+                int witnessCount = database.witnessDao().getWitnessCountByReport(reportId);
+                int suspectCount = database.suspectDao().getSuspectCountByReport(reportId);
+                int evidenceCount = database.evidenceDao().getEvidenceCountByReport(reportId);
+                
+                if (witnessCount > 0 && suspectCount > 0 && evidenceCount > 0) {
+                    // All 3 collected - COMPLETED
+                    step4.setCompleted(true);
+                    step4.setInProgress(false);
+                    android.util.Log.d("AdminCaseDetail", "✅ Step 4: COMPLETED (all witness, suspect, evidence present)");
+                } else if (isInvestigationStarted) {
+                    // Investigation started - show as IN PROGRESS (hourglass - current active step)
+                    step4.setCompleted(false);
+                    step4.setInProgress(true);
+                    android.util.Log.d("AdminCaseDetail", "⏳ Step 4: IN PROGRESS (collecting W:" + witnessCount + " S:" + suspectCount + " E:" + evidenceCount + ")");
+                } else {
+                    // Investigation not started - PENDING
+                    step4.setCompleted(false);
+                    step4.setInProgress(false);
+                    android.util.Log.d("AdminCaseDetail", "⭕ Step 4: PENDING");
+                }
+                investigationSteps.add(step4);
+                
+                // Step 5: Hearing Scheduled
+                // ✅ Show hourglass ONLY if hearing exists (current active step)
+                InvestigationStep step5 = new InvestigationStep("5", "Hearing Scheduled", "Court hearing date set", "hearing_scheduled");
+                int hearingCount = database.hearingDao().getHearingCountByReport(reportId);
+                
+                if (hearingCount > 0) {
+                    // Hearing scheduled - COMPLETED (checkmark)
+                    step5.setCompleted(true);
+                    step5.setInProgress(false);
+                    android.util.Log.d("AdminCaseDetail", "✅ Step 5: COMPLETED (hearing exists)");
+                } else if (witnessCount > 0 && suspectCount > 0 && evidenceCount > 0) {
+                    // All evidence collected - show as IN PROGRESS (hourglass - current active step)
+                    step5.setCompleted(false);
+                    step5.setInProgress(true);
+                    android.util.Log.d("AdminCaseDetail", "⏳ Step 5: IN PROGRESS (waiting to schedule hearing)");
+                } else {
+                    // Evidence not all collected - PENDING
+                    step5.setCompleted(false);
+                    step5.setInProgress(false);
+                    android.util.Log.d("AdminCaseDetail", "⭕ Step 5: PENDING");
+                }
+                investigationSteps.add(step5);
+                
+                // Step 6: Resolution Documented
+                // ✅ Show hourglass ONLY if resolution exists (current active step)
+                InvestigationStep step6 = new InvestigationStep("6", "Resolution Documented", "Case outcome documented", "resolution_documented");
+                int resolutionCount = database.resolutionDao().getResolutionCountByReport(reportId);
+                
+                if (resolutionCount > 0) {
+                    // Resolution documented - COMPLETED (checkmark)
+                    step6.setCompleted(true);
+                    step6.setInProgress(false);
+                    android.util.Log.d("AdminCaseDetail", "✅ Step 6: COMPLETED (resolution exists)");
+                } else if (hearingCount > 0) {
+                    // Hearing scheduled - show as IN PROGRESS (hourglass - current active step)
+                    step6.setCompleted(false);
+                    step6.setInProgress(true);
+                    android.util.Log.d("AdminCaseDetail", "⏳ Step 6: IN PROGRESS (waiting to document resolution)");
+                } else {
+                    // Hearing not scheduled - PENDING
+                    step6.setCompleted(false);
+                    step6.setInProgress(false);
+                    android.util.Log.d("AdminCaseDetail", "⭕ Step 6: PENDING");
+                }
+                investigationSteps.add(step6);
+                
+                // Step 7: Case Closed
+                // ✅ Auto-complete if resolution exists, otherwise PENDING
+                InvestigationStep step7 = new InvestigationStep("7", "Case Closed", "Case finalized", "case_closed");
+                if (resolutionCount > 0) {
+                    // Resolution exists - case is closed - COMPLETED (checkmark)
+                    step7.setCompleted(true);
+                    step7.setInProgress(false);
+                    android.util.Log.d("AdminCaseDetail", "✅ Step 7: COMPLETED (auto-complete due to resolution)");
+                } else if (hearingCount > 0) {
+                    // Hearing scheduled - show as IN PROGRESS (hourglass - current active step)
+                    step7.setCompleted(false);
+                    step7.setInProgress(true);
+                    android.util.Log.d("AdminCaseDetail", "⏳ Step 7: IN PROGRESS (waiting for resolution)");
+                } else {
+                    // Hearing not scheduled - PENDING
+                    step7.setCompleted(false);
+                    step7.setInProgress(false);
+                    android.util.Log.d("AdminCaseDetail", "⭕ Step 7: PENDING");
+                }
+                investigationSteps.add(step7);
+                
+                // Update UI on main thread
+                runOnUiThread(() -> {
+                    if (stepAdapter != null) {
+                        stepAdapter.updateSteps(investigationSteps);
+                    }
+                    android.util.Log.d("AdminCaseDetail", "✅ Investigation timeline initialized with 7 steps");
+                    isTimelineInitializing = false;  // ✅ Reset flag after UI update
+                });
+            } catch (Exception e) {
+                android.util.Log.e("AdminCaseDetail", "❌ Error initializing timeline: " + e.getMessage());
+                isTimelineInitializing = false;  // ✅ Reset flag on error
+            }
+        });
+    }
+    
+    /**
+     * Refresh the entire investigation timeline using centralized manager
+     * This ensures synchronized updates across all 3 roles (User, Officer, Admin)
+     */
+    private void refreshInvestigationTimeline() {
+        TimelineUpdateManager timelineManager = new TimelineUpdateManager(database);
+        timelineManager.updateTimelineForReport(reportId, new TimelineUpdateManager.TimelineUpdateCallback() {
+            @Override
+            public void onTimelineUpdated(List<InvestigationStep> updatedSteps) {
+                // Update UI on main thread
+                runOnUiThread(() -> {
+                    investigationSteps.clear();
+                    investigationSteps.addAll(updatedSteps);
+                    if (stepAdapter != null) {
+                        stepAdapter.notifyDataSetChanged();
+                    }
+                    android.util.Log.d("AdminCaseDetail", "✅ Timeline refreshed for all roles - synchronized");
+                });
+            }
+            
+            @Override
+            public void onTimelineUpdateFailed(String errorMessage) {
+                android.util.Log.e("AdminCaseDetail", "❌ Timeline update failed: " + errorMessage);
+            }
+        });
     }
     
     private void loadCaseDetails() {
@@ -218,24 +463,31 @@ public class AdminCaseDetailActivity extends BaseActivity {
         tvRelationship.setText(currentReport.getRelationshipToComplainant() != null && !currentReport.getRelationshipToComplainant().isEmpty() ? 
             currentReport.getRelationshipToComplainant() : "N/A");
         
-        // Status chip
+        // Status chip - Color coding for all statuses
         int statusColor = ContextCompat.getColor(this, R.color.text_secondary);
         String status = currentReport.getStatus() != null ? currentReport.getStatus().toLowerCase() : "pending";
         switch (status) {
             case "pending":
-                statusColor = ContextCompat.getColor(this, R.color.warning_yellow);
+                // 🔵 Pending - Electric Blue
+                statusColor = ContextCompat.getColor(this, R.color.electric_blue);
                 break;
             case "assigned":
+                // 🔵 Assigned - Electric Blue
                 statusColor = ContextCompat.getColor(this, R.color.electric_blue);
                 break;
             case "ongoing":
             case "in-progress":
-                statusColor = ContextCompat.getColor(this, R.color.electric_blue);
+            case "under investigation":
+                // 🟡 Ongoing - Yellow
+                statusColor = ContextCompat.getColor(this, R.color.warning_yellow);
                 break;
             case "resolved":
+            case "closed":
+                // 🟢 Resolved - Green
                 statusColor = ContextCompat.getColor(this, R.color.success_green);
                 break;
             default:
+                // ⚪ Unknown - Gray
                 statusColor = ContextCompat.getColor(this, R.color.text_secondary);
                 break;
         }
@@ -245,7 +497,23 @@ public class AdminCaseDetailActivity extends BaseActivity {
         // Show assigned officers if any
         if (currentReport.getAssignedOfficerIds() != null && !currentReport.getAssignedOfficerIds().isEmpty()) {
             btnAssignOfficer.setText("Reassign Officers");
+            // Disable the button to prevent duplicate assignments
+            btnAssignOfficer.setEnabled(false);
+            btnAssignOfficer.setAlpha(0.5f); // Visual feedback that button is disabled
+        } else {
+            // Enable button if no officers assigned yet
+            btnAssignOfficer.setEnabled(true);
+            btnAssignOfficer.setAlpha(1.0f);
         }
+        
+        // Configure timeline adapter for ADMIN role (read-only with view buttons)
+        if (stepAdapter != null) {
+            stepAdapter.setUserRole("ADMIN");
+            stepAdapter.setReportId(reportId);
+        }
+        
+        // Initialize timeline on background thread (requires database access)
+        initializeInvestigationTimeline();
     }
     
     private void loadEvidence() {
@@ -516,6 +784,8 @@ public class AdminCaseDetailActivity extends BaseActivity {
                         
                         // Refresh the UI to show updated status
                         populateFields();
+                        // Timeline will be initialized in populateFields() via initializeInvestigationTimeline()
+                        // No need to call refreshInvestigationTimeline() here to avoid duplication
                     });
                 }
             } catch (Exception e) {
@@ -790,12 +1060,110 @@ public class AdminCaseDetailActivity extends BaseActivity {
         }
     }
     
+    // Dialog methods for viewing investigation results
+    private void showWitnessesDialog(int reportId) {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                int witnessCount = database.witnessDao().getWitnessCountByReport(reportId);
+                runOnUiThread(() -> {
+                    androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
+                    builder.setTitle("👥 Witnesses (" + witnessCount + ")");
+                    builder.setMessage(witnessCount > 0 ? 
+                        "Witnesses have been recorded for this case." : 
+                        "No witnesses recorded yet.");
+                    builder.setPositiveButton("Close", (dialog, which) -> dialog.dismiss());
+                    builder.show();
+                });
+            } catch (Exception e) {
+                android.util.Log.e("AdminCaseDetail", "Error loading witnesses: " + e.getMessage());
+            }
+        });
+    }
+    
+    private void showSuspectsDialog(int reportId) {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                int suspectCount = database.suspectDao().getSuspectCountByReport(reportId);
+                runOnUiThread(() -> {
+                    androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
+                    builder.setTitle("🚨 Suspects (" + suspectCount + ")");
+                    builder.setMessage(suspectCount > 0 ? 
+                        "Suspects have been identified for this case." : 
+                        "No suspects identified yet.");
+                    builder.setPositiveButton("Close", (dialog, which) -> dialog.dismiss());
+                    builder.show();
+                });
+            } catch (Exception e) {
+                android.util.Log.e("AdminCaseDetail", "Error loading suspects: " + e.getMessage());
+            }
+        });
+    }
+    
+    private void showEvidenceDialog(int reportId) {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                int evidenceCount = database.evidenceDao().getEvidenceCountByReport(reportId);
+                runOnUiThread(() -> {
+                    androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
+                    builder.setTitle("📸 Evidence (" + evidenceCount + ")");
+                    builder.setMessage(evidenceCount > 0 ? 
+                        "Evidence has been collected for this case." : 
+                        "No evidence collected yet.");
+                    builder.setPositiveButton("Close", (dialog, which) -> dialog.dismiss());
+                    builder.show();
+                });
+            } catch (Exception e) {
+                android.util.Log.e("AdminCaseDetail", "Error loading evidence: " + e.getMessage());
+            }
+        });
+    }
+    
+    private void showHearingsDialog(int reportId) {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                int hearingCount = database.hearingDao().getHearingCountByReport(reportId);
+                runOnUiThread(() -> {
+                    androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
+                    builder.setTitle("📅 Hearings (" + hearingCount + ")");
+                    builder.setMessage(hearingCount > 0 ? 
+                        "Hearing(s) have been scheduled for this case." : 
+                        "No hearings scheduled yet.");
+                    builder.setPositiveButton("Close", (dialog, which) -> dialog.dismiss());
+                    builder.show();
+                });
+            } catch (Exception e) {
+                android.util.Log.e("AdminCaseDetail", "Error loading hearings: " + e.getMessage());
+            }
+        });
+    }
+    
+    private void showResolutionDialog(int reportId) {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                int resolutionCount = database.resolutionDao().getResolutionCountByReport(reportId);
+                runOnUiThread(() -> {
+                    androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
+                    builder.setTitle("✅ Resolution (" + resolutionCount + ")");
+                    builder.setMessage(resolutionCount > 0 ? 
+                        "Case resolution has been documented." : 
+                        "Case resolution not yet documented.");
+                    builder.setPositiveButton("Close", (dialog, which) -> dialog.dismiss());
+                    builder.show();
+                });
+            } catch (Exception e) {
+                android.util.Log.e("AdminCaseDetail", "Error loading resolution: " + e.getMessage());
+            }
+        });
+    }
+    
     @Override
     protected void onResume() {
         super.onResume();
         // Refresh case details when returning to this screen
         if (reportId != -1) {
             loadCaseDetails();
+            // Timeline will be initialized in populateFields() via loadCaseDetails()
+            // No need to call refreshInvestigationTimeline() here to avoid duplication
         }
     }
 }

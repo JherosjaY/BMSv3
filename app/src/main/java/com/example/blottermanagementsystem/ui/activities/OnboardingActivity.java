@@ -54,12 +54,25 @@ public class OnboardingActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.item_onboarding_page);
         
+        android.util.Log.d("OnboardingActivity", "✅ OnboardingActivity.onCreate() - Screen is displaying!");
+        
         preferencesManager = new PreferencesManager(this);
         
         initViews();
         setupGestureDetector();
         setupListeners();
         showPage(0);
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // If onboarding is already completed, skip this screen
+        if (preferencesManager.isOnboardingCompleted()) {
+            android.util.Log.d("OnboardingActivity", "⚠️ Onboarding already completed - skipping to PermissionsSetupActivity");
+            startActivity(new Intent(this, PermissionsSetupActivity.class));
+            finish();
+        }
     }
     
     private void initViews() {
@@ -188,7 +201,9 @@ public class OnboardingActivity extends BaseActivity {
     }
     
     private void finishOnboarding() {
+        android.util.Log.d("OnboardingActivity", "✅ finishOnboarding() - Setting onboarding_completed = true");
         preferencesManager.setOnboardingCompleted(true);
+        android.util.Log.d("OnboardingActivity", "🔐 finishOnboarding() - Launching PermissionsSetupActivity");
         startActivity(new Intent(this, PermissionsSetupActivity.class));
         finish();
     }

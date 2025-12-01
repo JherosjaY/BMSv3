@@ -42,9 +42,23 @@ public class KPFormsDialogFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Dialog);
+        // Use transparent background to show the MaterialCardView properly
+        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Dialog_MinWidth);
         if (getArguments() != null) {
             reportId = getArguments().getInt("report_id");
+        }
+    }
+    
+    @Override
+    public void onStart() {
+        super.onStart();
+        // Make dialog background transparent to show MaterialCardView
+        if (getDialog() != null && getDialog().getWindow() != null) {
+            getDialog().getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            // Set dialog to match parent width with padding
+            android.view.WindowManager.LayoutParams params = getDialog().getWindow().getAttributes();
+            params.width = (int) (getResources().getDisplayMetrics().widthPixels * 0.9);
+            getDialog().getWindow().setAttributes(params);
         }
     }
 

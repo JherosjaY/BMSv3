@@ -9,6 +9,7 @@ public class InvestigationStep {
     private String actionText;
     private int actionIcon;
     private String tag; // To identify the step for click handling
+    private boolean enabled; // ✅ For sequential unlock of action buttons
 
     public InvestigationStep(String id, String title, String description, String tag) {
         this.id = id;
@@ -17,6 +18,7 @@ public class InvestigationStep {
         this.tag = tag;
         this.completed = false;
         this.inProgress = false;
+        this.enabled = true; // ✅ Default to enabled
     }
 
     // Getters and Setters
@@ -82,5 +84,13 @@ public class InvestigationStep {
 
     public void setTag(String tag) {
         this.tag = tag;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 }

@@ -41,8 +41,10 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Executors;
 
@@ -51,8 +53,8 @@ public class AddReportActivity extends BaseActivity {
     // UI Components
     private TextInputEditText etIncidentDate, etIncidentTime, etComplainantName, etComplainantAddress, 
                               etComplainantContact, etNarrative, etIncidentLocation;
-    private TextInputEditText etRespondentName, etRespondentAlias, etRespondentAddress, etRespondentContact, etAccusation;
-    private AutoCompleteTextView actvIncidentType, actvRelationship;
+    private TextInputEditText etRespondentName, etRespondentAlias, etRespondentAddress, etRespondentContact;
+    private AutoCompleteTextView actvIncidentType, actvRelationship, etAccusation;
     private TextView tvCaseNumber;
     private TextView tvImagesLabel, tvVideosLabel;
     private Button btnSubmit;
@@ -402,6 +404,14 @@ public class AddReportActivity extends BaseActivity {
     }
     
     private void setupListeners() {
+        // Accusation field - populate dropdown based on selected incident type
+        etAccusation.setOnClickListener(v -> {
+            String selectedIncidentType = actvIncidentType.getText().toString().trim();
+            if (!selectedIncidentType.isEmpty()) {
+                populateAccusationDropdown(selectedIncidentType);
+            }
+        });
+        
         // Date picker
         etIncidentDate.setOnClickListener(v -> showDatePicker());
         
@@ -446,6 +456,139 @@ public class AddReportActivity extends BaseActivity {
         long number = 1000000000L + (long)(random.nextDouble() * 9000000000L);
         String caseNumber = "BLT-" + number;
         tvCaseNumber.setText(caseNumber);
+    }
+    
+    /**
+     * Populate Accusation dropdown based on selected Incident Type
+     * This is called when user clicks on the Accusation field
+     */
+    private void populateAccusationDropdown(String incidentType) {
+        Map<String, String[]> mapping = getIncidentToAccusationsMapping();
+        String[] accusations = mapping.getOrDefault(incidentType, new String[]{incidentType});
+        
+        // Create adapter for accusation dropdown
+        ArrayAdapter<String> accusationAdapter = new ArrayAdapter<>(
+            this,
+            android.R.layout.simple_dropdown_item_1line,
+            accusations
+        );
+        
+        // Set adapter and configure dropdown
+        etAccusation.setAdapter(accusationAdapter);
+        etAccusation.setThreshold(0); // Show dropdown immediately
+        
+        // DON'T auto-fill text - let user click to see dropdown
+        // Just show the dropdown with all options
+        etAccusation.showDropDown();
+        
+        android.util.Log.d("AddReportActivity", "✅ Populated Accusation dropdown for: " + incidentType + " with " + accusations.length + " option(s)");
+    }
+    
+    /**
+     * Mapping table: Incident Type → List of Accusations
+     * Maps incident types to multiple related legal accusations for user selection
+     */
+    private Map<String, String[]> getIncidentToAccusationsMapping() {
+        Map<String, String[]> mapping = new HashMap<>();
+        
+        // Violent Crimes
+        mapping.put("Assault", new String[]{"Physical Assault", "Simple Assault", "Aggravated Assault"});
+        mapping.put("Domestic Violence", new String[]{"Domestic Violence", "Domestic Abuse", "Intimate Partner Violence"});
+        mapping.put("Homicide", new String[]{"Homicide", "Murder", "Manslaughter"});
+        mapping.put("Sexual Assault", new String[]{"Sexual Assault", "Rape", "Statutory Rape", "Sexual Battery"});
+        mapping.put("Kidnapping", new String[]{"Kidnapping", "Abduction", "False Imprisonment"});
+        mapping.put("Child Abuse", new String[]{"Child Abuse", "Child Neglect", "Child Endangerment"});
+        mapping.put("Rape", new String[]{"Rape", "Sexual Assault", "Statutory Rape"});
+        mapping.put("Aggravated Assault", new String[]{"Aggravated Assault", "Assault with Deadly Weapon", "Assault with Intent to Injure"});
+        mapping.put("Murder", new String[]{"Murder", "First Degree Murder", "Second Degree Murder"});
+        mapping.put("Manslaughter", new String[]{"Manslaughter", "Voluntary Manslaughter", "Involuntary Manslaughter"});
+        mapping.put("Attempted Murder", new String[]{"Attempted Murder", "Assault with Intent to Kill"});
+        mapping.put("Robbery with Violence", new String[]{"Armed Robbery", "Robbery with Force", "Aggravated Robbery"});
+        mapping.put("Mugging", new String[]{"Mugging", "Street Robbery", "Robbery"});
+        mapping.put("Carjacking", new String[]{"Carjacking", "Motor Vehicle Theft", "Armed Carjacking"});
+        mapping.put("Human Trafficking", new String[]{"Human Trafficking", "Sex Trafficking", "Labor Trafficking"});
+        mapping.put("Extortion", new String[]{"Extortion", "Blackmail", "Coercion"});
+        mapping.put("Threatening", new String[]{"Threatening", "Criminal Threats", "Threatening with Violence", "Intimidation", "Menacing"});
+        
+        // Property Crimes
+        mapping.put("Theft", new String[]{"Larceny", "Theft", "Grand Theft", "Petty Theft"});
+        mapping.put("Burglary", new String[]{"Burglary", "Breaking and Entering", "Residential Burglary", "Commercial Burglary"});
+        mapping.put("Robbery", new String[]{"Robbery", "Armed Robbery", "Strongarm Robbery"});
+        mapping.put("Vandalism", new String[]{"Vandalism", "Criminal Mischief", "Property Destruction"});
+        mapping.put("Property Damage", new String[]{"Property Damage", "Destruction of Property", "Malicious Mischief"});
+        mapping.put("Arson", new String[]{"Arson", "Arson in First Degree", "Arson in Second Degree"});
+        mapping.put("Trespassing", new String[]{"Trespassing", "Unlawful Entry", "Criminal Trespass"});
+        mapping.put("Shoplifting", new String[]{"Shoplifting", "Retail Theft", "Larceny from Store"});
+        mapping.put("Grand Larceny", new String[]{"Grand Larceny", "Grand Theft", "Felony Theft"});
+        mapping.put("Petty Larceny", new String[]{"Petty Larceny", "Petty Theft", "Misdemeanor Theft"});
+        mapping.put("Auto Theft", new String[]{"Auto Theft", "Vehicle Theft", "Motor Vehicle Theft"});
+        mapping.put("Bike Theft", new String[]{"Bike Theft", "Bicycle Theft", "Larceny of Bicycle"});
+        mapping.put("Breaking & Entering", new String[]{"Breaking and Entering", "Burglary", "Unlawful Entry"});
+        mapping.put("Looting", new String[]{"Looting", "Theft During Emergency", "Burglary During Disaster"});
+        mapping.put("Pickpocketing", new String[]{"Pickpocketing", "Theft from Person", "Larceny from Person"});
+        mapping.put("Forgery", new String[]{"Forgery", "Document Falsification", "Forgery of Documents"});
+        mapping.put("Counterfeiting", new String[]{"Counterfeiting", "Counterfeiting Currency", "Forgery of Currency"});
+        
+        // Cyber Crimes
+        mapping.put("Cybercrime", new String[]{"Cybercrime", "Computer Fraud", "Unauthorized Computer Access"});
+        mapping.put("Scam/Phishing", new String[]{"Phishing Scam", "Email Scam", "Online Fraud", "Phishing Attack"});
+        mapping.put("Identity Theft", new String[]{"Identity Theft", "Identity Fraud", "Unauthorized Use of Identity"});
+        mapping.put("Fraud", new String[]{"Fraud", "Wire Fraud", "Mail Fraud", "Internet Fraud"});
+        mapping.put("Hacking", new String[]{"Unauthorized Computer Access", "Hacking", "Computer Intrusion"});
+        mapping.put("Malware Distribution", new String[]{"Malware Distribution", "Computer Virus Distribution", "Malicious Software"});
+        mapping.put("Data Breach", new String[]{"Data Breach", "Unauthorized Data Access", "Data Theft"});
+        mapping.put("Online Harassment", new String[]{"Cyberstalking", "Online Harassment", "Cyber Harassment"});
+        mapping.put("Catfishing", new String[]{"Catfishing", "Online Impersonation", "Fraud by Impersonation"});
+        mapping.put("Ransomware", new String[]{"Ransomware Attack", "Extortion via Ransomware", "Computer Extortion"});
+        mapping.put("Credit Card Fraud", new String[]{"Credit Card Fraud", "Unauthorized Card Use", "Card Fraud"});
+        mapping.put("Money Laundering", new String[]{"Money Laundering", "Financial Crime", "Illegal Money Transfer"});
+        mapping.put("Unauthorized Access", new String[]{"Unauthorized Computer Access", "Hacking", "System Intrusion"});
+        
+        // Public Order
+        mapping.put("Noise Complaint", new String[]{"Noise Disturbance", "Excessive Noise", "Noise Violation"});
+        mapping.put("Public Disturbance", new String[]{"Disorderly Conduct", "Public Disturbance", "Breach of Peace"});
+        mapping.put("Harassment", new String[]{"Harassment", "Workplace Harassment", "Sexual Harassment"});
+        mapping.put("Stalking", new String[]{"Stalking", "Criminal Stalking", "Harassment by Stalking"});
+        mapping.put("Illegal Gambling", new String[]{"Illegal Gambling", "Unlicensed Gambling", "Gambling Violation"});
+        mapping.put("Littering", new String[]{"Littering", "Illegal Dumping of Trash", "Environmental Violation"});
+        mapping.put("Illegal Dumping", new String[]{"Illegal Dumping", "Improper Waste Disposal", "Environmental Crime"});
+        mapping.put("Loitering", new String[]{"Loitering", "Loitering with Intent", "Suspicious Loitering"});
+        mapping.put("Disorderly Conduct", new String[]{"Disorderly Conduct", "Disruptive Behavior", "Breach of Peace"});
+        mapping.put("Indecent Exposure", new String[]{"Indecent Exposure", "Indecent Act", "Lewdness"});
+        mapping.put("Vagrancy", new String[]{"Vagrancy", "Vagrancy Violation", "Loitering"});
+        mapping.put("Public Intoxication", new String[]{"Public Intoxication", "Drunk and Disorderly", "Intoxication in Public"});
+        mapping.put("Prostitution", new String[]{"Prostitution", "Solicitation", "Engaging in Prostitution"});
+        mapping.put("Unlicensed Vending", new String[]{"Unlicensed Vending", "Illegal Street Vending", "Vending Without Permit"});
+        
+        // Traffic & Vehicle
+        mapping.put("Traffic Accident", new String[]{"Traffic Accident", "Motor Vehicle Accident", "Traffic Collision"});
+        mapping.put("Illegal Parking", new String[]{"Illegal Parking", "Parking Violation", "Improper Parking"});
+        mapping.put("Speeding", new String[]{"Speeding", "Exceeding Speed Limit", "Speed Violation"});
+        mapping.put("Reckless Driving", new String[]{"Reckless Driving", "Dangerous Driving", "Careless Driving"});
+        mapping.put("DUI/DWI", new String[]{"Driving Under Influence", "DUI", "DWI", "Drunk Driving"});
+        mapping.put("Hit and Run", new String[]{"Hit and Run", "Leaving Scene of Accident", "Failure to Report Accident"});
+        mapping.put("Expired Registration", new String[]{"Expired Registration", "Registration Violation", "Unregistered Vehicle"});
+        mapping.put("Broken Headlight", new String[]{"Equipment Violation", "Defective Equipment", "Safety Equipment Violation"});
+        mapping.put("Expired License", new String[]{"Expired License", "Driving with Expired License", "License Violation"});
+        mapping.put("Improper Lane Change", new String[]{"Improper Lane Change", "Unsafe Lane Change", "Traffic Violation"});
+        mapping.put("Running Red Light", new String[]{"Traffic Violation", "Running Red Light", "Signal Violation"});
+        mapping.put("Unregistered Vehicle", new String[]{"Unregistered Vehicle", "Unregistered Motor Vehicle", "Registration Violation"});
+        mapping.put("No Insurance", new String[]{"No Insurance", "Driving Without Insurance", "Insurance Violation"});
+        mapping.put("Unsafe Lane Change", new String[]{"Unsafe Lane Change", "Improper Lane Change", "Traffic Violation"});
+        
+        // Other Incidents
+        mapping.put("Missing Person", new String[]{"Missing Person Report", "Missing Adult", "Missing Child"});
+        mapping.put("Drug-related", new String[]{"Drug Possession", "Drug Distribution", "Drug Manufacturing"});
+        mapping.put("Animal Cruelty", new String[]{"Animal Cruelty", "Animal Abuse", "Animal Neglect"});
+        mapping.put("Lost Property", new String[]{"Lost Property", "Property Report", "Lost Item Report"});
+        mapping.put("Found Property", new String[]{"Found Property", "Property Report", "Found Item Report"});
+        mapping.put("Suspicious Activity", new String[]{"Suspicious Activity", "Suspicious Behavior", "Suspicious Incident"});
+        mapping.put("Welfare Check", new String[]{"Welfare Check", "Welfare Concern", "Safety Check"});
+        mapping.put("Environmental Violation", new String[]{"Environmental Violation", "Environmental Crime", "Pollution Violation"});
+        mapping.put("Permit Violation", new String[]{"Permit Violation", "License Violation", "Regulatory Violation"});
+        mapping.put("Unauthorized Entry", new String[]{"Unauthorized Entry", "Unlawful Entry", "Trespass"});
+        
+        return mapping;
     }
     
     private void setupIncidentTypes() {
@@ -534,7 +677,7 @@ public class AddReportActivity extends BaseActivity {
                 categoryTitle = "Property Crimes";
                 types = new String[]{
                     "Theft", "Burglary", "Robbery", "Vandalism", "Property Damage",
-                    "Arson", "Trespassing", "Shoplifting", "Grand Larceny",
+                    "Arson", "Shoplifting", "Grand Larceny",
                     "Petty Larceny", "Auto Theft", "Bike Theft", "Breaking & Entering",
                     "Looting", "Pickpocketing", "Forgery", "Counterfeiting"
                 };
@@ -543,7 +686,7 @@ public class AddReportActivity extends BaseActivity {
                 categoryTitle = "Cyber Crimes";
                 types = new String[]{
                     "Cybercrime", "Scam/Phishing", "Identity Theft", "Fraud",
-                    "Extortion", "Hacking", "Malware Distribution", "Data Breach",
+                    "Hacking", "Malware Distribution", "Data Breach",
                     "Online Harassment", "Catfishing", "Ransomware", "Credit Card Fraud",
                     "Money Laundering", "Unauthorized Access"
                 };
@@ -552,7 +695,7 @@ public class AddReportActivity extends BaseActivity {
                 categoryTitle = "Public Order";
                 types = new String[]{
                     "Noise Complaint", "Public Disturbance", "Harassment", "Stalking",
-                    "Illegal Gambling", "Littering", "Illegal Dumping", "Trespassing",
+                    "Illegal Gambling", "Littering", "Illegal Dumping",
                     "Loitering", "Disorderly Conduct", "Indecent Exposure", "Vagrancy",
                     "Public Intoxication", "Prostitution", "Unlicensed Vending"
                 };
@@ -571,8 +714,8 @@ public class AddReportActivity extends BaseActivity {
                 types = new String[]{
                     "Missing Person", "Drug-related", "Animal Cruelty",
                     "Lost Property", "Found Property", "Suspicious Activity", "Welfare Check",
-                    "Noise Disturbance", "Environmental Violation", "Permit Violation",
-                    "Trespassing", "Unauthorized Entry"
+                    "Environmental Violation", "Permit Violation",
+                    "Unauthorized Entry"
                 };
                 break;
             default:
@@ -641,6 +784,11 @@ public class AddReportActivity extends BaseActivity {
                     android.widget.RadioButton selectedRadio = customView.findViewById(selectedId);
                     String selectedType = selectedRadio.getText().toString();
                     actvIncidentType.setText(selectedType);
+                    
+                    // Clear accusation field - user will click to see dropdown
+                    etAccusation.setText("");
+                    
+                    android.util.Log.d("AddReportActivity", "✅ Cleared Accusation field - user can now click to see dropdown options");
                     dialogInterface.dismiss();
                 }
             })
@@ -1167,6 +1315,10 @@ public class AddReportActivity extends BaseActivity {
                 
                 runOnUiThread(() -> {
                     com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
+                    // Redirect to Report Details instead of going back to dashboard
+                    Intent detailsIntent = new Intent(AddReportActivity.this, ReportDetailActivity.class);
+                    detailsIntent.putExtra("REPORT_ID", (int) reportId);
+                    startActivity(detailsIntent);
                     finish();
                 });
             } else {
@@ -1184,3 +1336,4 @@ public class AddReportActivity extends BaseActivity {
         });
     }
 }
+

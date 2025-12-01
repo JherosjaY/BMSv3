@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.TextView;
@@ -54,8 +55,8 @@ public class EditReportActivity extends BaseActivity {
     private TextInputEditText etIncidentDate, etIncidentTime;
     private TextInputEditText etComplainantName, etComplainantAddress;
     private TextInputEditText etComplainantContact, etNarrative, etIncidentLocation;
-    private TextInputEditText etRespondentName, etRespondentAlias, etRespondentAddress, etRespondentContact, etAccusation;
-    private AutoCompleteTextView actvIncidentType, actvRelationship;
+    private TextInputEditText etRespondentName, etRespondentAlias, etRespondentAddress, etRespondentContact;
+    private AutoCompleteTextView actvIncidentType, actvRelationship, etAccusation;
     private TextView tvCaseNumber;
     private TextView tvImagesLabel, tvVideosLabel;
     private Button btnSave;
@@ -186,6 +187,7 @@ public class EditReportActivity extends BaseActivity {
         setupToolbar();
         setupRecyclerViews();
         setupMediaListeners();
+        setupEditableDropdowns();
         loadReportData();
     }
     
@@ -241,9 +243,14 @@ public class EditReportActivity extends BaseActivity {
             
             @Override
             public void onImageDelete(int position) {
-                imageList.remove(position);
-                imageAdapter.notifyItemRemoved(position);
-                updateImageView();
+                // Validate position before removing
+                if (position >= 0 && position < imageList.size()) {
+                    imageList.remove(position);
+                    imageAdapter.notifyItemRemoved(position);
+                    updateImageView();
+                } else {
+                    Toast.makeText(EditReportActivity.this, "Error: Invalid image position", Toast.LENGTH_SHORT).show();
+                }
             }
         });
         LinearLayoutManager imageLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
@@ -259,9 +266,14 @@ public class EditReportActivity extends BaseActivity {
             
             @Override
             public void onVideoDelete(int position) {
-                videoList.remove(position);
-                videoAdapter.notifyItemRemoved(position);
-                updateVideoView();
+                // Check if position is valid before removing
+                if (position >= 0 && position < videoList.size()) {
+                    videoList.remove(position);
+                    videoAdapter.notifyItemRemoved(position);
+                    updateVideoView();
+                } else {
+                    Toast.makeText(EditReportActivity.this, "Error: Invalid video position", Toast.LENGTH_SHORT).show();
+                }
             }
         });
         LinearLayoutManager videoLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
@@ -297,6 +309,183 @@ public class EditReportActivity extends BaseActivity {
         });
         
         btnSave.setOnClickListener(v -> saveChanges());
+    }
+    
+    /**
+     * Setup editable dropdowns for Incident Type, Accusation, and Relationship
+     * Uses the same mapping system as AddReportActivity
+     */
+    private void setupEditableDropdowns() {
+        try {
+            android.util.Log.d("EditReport", "🔍 setupEditableDropdowns started");
+            
+            // Get all incident types
+            String[] incidentTypes = getIncidentTypes();
+            android.util.Log.d("EditReport", "✅ Got " + incidentTypes.length + " incident types");
+            
+            // Incident Type dropdown
+            ArrayAdapter<String> incidentAdapter = new ArrayAdapter<>(this, 
+                android.R.layout.simple_dropdown_item_1line, incidentTypes);
+            actvIncidentType.setAdapter(incidentAdapter);
+            actvIncidentType.setThreshold(0);
+            android.util.Log.d("EditReport", "✅ Incident Type adapter set");
+            
+            // Show dropdown on focus
+            actvIncidentType.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    android.util.Log.d("EditReport", "🔍 Incident Type focused - showing dropdown");
+                    actvIncidentType.showDropDown();
+                }
+            });
+        
+        // Accusation dropdown - populate when clicked or focused
+        etAccusation.setOnClickListener(v -> {
+            String selectedIncidentType = actvIncidentType.getText().toString().trim();
+            if (!selectedIncidentType.isEmpty()) {
+                populateAccusationDropdown(selectedIncidentType);
+            } else {
+                Toast.makeText(this, "Please select an incident type first", Toast.LENGTH_SHORT).show();
+            }
+        });
+        etAccusation.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                String selectedIncidentType = actvIncidentType.getText().toString().trim();
+                if (!selectedIncidentType.isEmpty()) {
+                    populateAccusationDropdown(selectedIncidentType);
+                } else {
+                    Toast.makeText(this, "Please select an incident type first", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        
+            // Relationship dropdown
+            String[] relationships = {
+                "Co-worker", "Supervisor", "Subordinate", "Family Member", "Friend",
+                "Acquaintance", "Stranger", "Business Associate", "Neighbor", "Other"
+            };
+            ArrayAdapter<String> relationshipAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_dropdown_item_1line, relationships);
+            actvRelationship.setAdapter(relationshipAdapter);
+            actvRelationship.setThreshold(0);
+            android.util.Log.d("EditReport", "✅ Relationship adapter set");
+            
+            // Show dropdown on focus
+            actvRelationship.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    android.util.Log.d("EditReport", "🔍 Relationship focused - showing dropdown");
+                    actvRelationship.showDropDown();
+                }
+            });
+            
+            android.util.Log.d("EditReport", "✅✅✅ setupEditableDropdowns completed successfully");
+        } catch (Exception e) {
+            android.util.Log.e("EditReport", "❌ Error in setupEditableDropdowns: " + e.getMessage(), e);
+            Toast.makeText(this, "Error setting up dropdowns: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    /**
+     * Get all available incident types
+     */
+    private String[] getIncidentTypes() {
+        java.util.Set<String> incidentSet = getIncidentToAccusationsMapping().keySet();
+        String[] incidents = incidentSet.toArray(new String[0]);
+        java.util.Arrays.sort(incidents);
+        return incidents;
+    }
+    
+    /**
+     * Populate Accusation dropdown based on selected Incident Type
+     * This is called when user clicks on the Accusation field
+     */
+    private void populateAccusationDropdown(String incidentType) {
+        java.util.Map<String, String[]> mapping = getIncidentToAccusationsMapping();
+        String[] accusations = mapping.getOrDefault(incidentType, new String[]{incidentType});
+        
+        // Create adapter for accusation dropdown
+        ArrayAdapter<String> accusationAdapter = new ArrayAdapter<>(
+            this,
+            android.R.layout.simple_dropdown_item_1line,
+            accusations
+        );
+        
+        // Set adapter and configure dropdown
+        etAccusation.setAdapter(accusationAdapter);
+        etAccusation.setThreshold(0);
+        etAccusation.showDropDown();
+    }
+    
+    /**
+     * Mapping table: Incident Type → List of Accusations
+     * Maps incident types to multiple related legal accusations for user selection
+     */
+    private java.util.Map<String, String[]> getIncidentToAccusationsMapping() {
+        java.util.Map<String, String[]> mapping = new java.util.HashMap<>();
+        
+        // Violent Crimes
+        mapping.put("Assault", new String[]{"Physical Assault", "Simple Assault", "Aggravated Assault"});
+        mapping.put("Domestic Violence", new String[]{"Domestic Violence", "Domestic Abuse", "Intimate Partner Violence"});
+        mapping.put("Homicide", new String[]{"Homicide", "Murder", "Manslaughter"});
+        mapping.put("Sexual Assault", new String[]{"Sexual Assault", "Rape", "Statutory Rape", "Sexual Battery"});
+        mapping.put("Kidnapping", new String[]{"Kidnapping", "Abduction", "False Imprisonment"});
+        mapping.put("Child Abuse", new String[]{"Child Abuse", "Child Neglect", "Child Endangerment"});
+        mapping.put("Rape", new String[]{"Rape", "Sexual Assault", "Statutory Rape"});
+        mapping.put("Aggravated Assault", new String[]{"Aggravated Assault", "Assault with Deadly Weapon", "Assault with Intent to Injure"});
+        mapping.put("Murder", new String[]{"Murder", "First Degree Murder", "Second Degree Murder"});
+        mapping.put("Manslaughter", new String[]{"Manslaughter", "Voluntary Manslaughter", "Involuntary Manslaughter"});
+        mapping.put("Attempted Murder", new String[]{"Attempted Murder", "Assault with Intent to Kill"});
+        mapping.put("Robbery with Violence", new String[]{"Armed Robbery", "Robbery with Force", "Aggravated Robbery"});
+        mapping.put("Mugging", new String[]{"Mugging", "Street Robbery", "Robbery"});
+        mapping.put("Carjacking", new String[]{"Carjacking", "Motor Vehicle Theft", "Armed Carjacking"});
+        mapping.put("Human Trafficking", new String[]{"Human Trafficking", "Sex Trafficking", "Labor Trafficking"});
+        mapping.put("Extortion", new String[]{"Extortion", "Blackmail", "Coercion"});
+        mapping.put("Threatening", new String[]{"Threatening", "Criminal Threats", "Threatening with Violence", "Intimidation", "Menacing"});
+        
+        // Property Crimes
+        mapping.put("Theft", new String[]{"Larceny", "Theft", "Grand Theft", "Petty Theft"});
+        mapping.put("Burglary", new String[]{"Burglary", "Breaking and Entering", "Residential Burglary", "Commercial Burglary"});
+        mapping.put("Robbery", new String[]{"Robbery", "Armed Robbery", "Strongarm Robbery"});
+        mapping.put("Vandalism", new String[]{"Vandalism", "Criminal Mischief", "Property Destruction"});
+        mapping.put("Property Damage", new String[]{"Property Damage", "Destruction of Property", "Malicious Mischief"});
+        mapping.put("Arson", new String[]{"Arson", "Arson in First Degree", "Arson in Second Degree"});
+        mapping.put("Trespassing", new String[]{"Trespassing", "Unlawful Entry", "Criminal Trespass"});
+        mapping.put("Shoplifting", new String[]{"Shoplifting", "Retail Theft", "Larceny from Store"});
+        mapping.put("Grand Larceny", new String[]{"Grand Larceny", "Grand Theft", "Felony Theft"});
+        mapping.put("Petty Larceny", new String[]{"Petty Larceny", "Petty Theft", "Misdemeanor Theft"});
+        mapping.put("Auto Theft", new String[]{"Auto Theft", "Vehicle Theft", "Motor Vehicle Theft"});
+        mapping.put("Bike Theft", new String[]{"Bike Theft", "Bicycle Theft", "Larceny of Bicycle"});
+        mapping.put("Breaking & Entering", new String[]{"Breaking and Entering", "Burglary", "Unlawful Entry"});
+        mapping.put("Looting", new String[]{"Looting", "Theft During Emergency", "Burglary During Disaster"});
+        mapping.put("Pickpocketing", new String[]{"Pickpocketing", "Theft from Person", "Larceny from Person"});
+        mapping.put("Forgery", new String[]{"Forgery", "Document Falsification", "Forgery of Documents"});
+        mapping.put("Counterfeiting", new String[]{"Counterfeiting", "Counterfeiting Currency", "Forgery of Currency"});
+        
+        // Cyber Crimes
+        mapping.put("Cybercrime", new String[]{"Cybercrime", "Computer Fraud", "Unauthorized Computer Access"});
+        mapping.put("Scam/Phishing", new String[]{"Phishing Scam", "Email Scam", "Online Fraud", "Phishing Attack"});
+        mapping.put("Identity Theft", new String[]{"Identity Theft", "Identity Fraud", "Unauthorized Use of Identity"});
+        mapping.put("Fraud", new String[]{"Fraud", "Wire Fraud", "Mail Fraud", "Internet Fraud"});
+        mapping.put("Hacking", new String[]{"Unauthorized Computer Access", "Hacking", "Computer Intrusion"});
+        mapping.put("Malware Distribution", new String[]{"Malware Distribution", "Computer Virus Distribution", "Malicious Software"});
+        mapping.put("Data Breach", new String[]{"Data Breach", "Unauthorized Data Access", "Data Theft"});
+        mapping.put("Online Harassment", new String[]{"Cyberstalking", "Online Harassment", "Cyber Harassment"});
+        mapping.put("Catfishing", new String[]{"Catfishing", "Online Impersonation", "Fraud by Impersonation"});
+        mapping.put("Ransomware", new String[]{"Ransomware Attack", "Extortion via Ransomware", "Computer Extortion"});
+        mapping.put("Credit Card Fraud", new String[]{"Credit Card Fraud", "Unauthorized Card Use", "Card Fraud"});
+        mapping.put("Money Laundering", new String[]{"Money Laundering", "Financial Crime", "Illegal Money Transfer"});
+        mapping.put("Unauthorized Access", new String[]{"Unauthorized Computer Access", "Hacking", "System Intrusion"});
+        
+        // Public Order
+        mapping.put("Noise Complaint", new String[]{"Noise Disturbance", "Excessive Noise", "Noise Violation"});
+        mapping.put("Public Disturbance", new String[]{"Disorderly Conduct", "Public Disturbance", "Breach of Peace"});
+        mapping.put("Harassment", new String[]{"Harassment", "Workplace Harassment", "Sexual Harassment"});
+        mapping.put("Stalking", new String[]{"Stalking", "Criminal Stalking", "Harassment by Stalking"});
+        mapping.put("Illegal Gambling", new String[]{"Illegal Gambling", "Unlicensed Gambling", "Gambling Violation"});
+        mapping.put("Littering", new String[]{"Littering", "Illegal Dumping of Trash", "Environmental Violation"});
+        mapping.put("Illegal Dumping", new String[]{"Illegal Dumping", "Improper Waste Disposal", "Environmental Crime"});
+        mapping.put("Loitering", new String[]{"Loitering", "Loitering with Intent", "Suspicious Loitering"});
+        
+        return mapping;
     }
     
     private void loadReportData() {
@@ -707,15 +896,48 @@ public class EditReportActivity extends BaseActivity {
     }
     
     private void saveChanges() {
-        // Validate
-        if (etComplainantName.getText().toString().trim().isEmpty()) {
-            etComplainantName.setError("Required");
+        // ===== STRICT FIELD VALIDATION - REQUIRED FIELDS ONLY =====
+        
+        // 1. Complainant Name (REQUIRED)
+        String complainantName = etComplainantName.getText().toString().trim();
+        if (complainantName.isEmpty()) {
+            etComplainantName.setError("Complainant name is required");
+            etComplainantName.requestFocus();
+            Toast.makeText(this, "Please fill in all required fields", Toast.LENGTH_SHORT).show();
             return;
         }
         
+        // 2. Incident Type (REQUIRED)
+        String incidentType = actvIncidentType.getText().toString().trim();
+        if (incidentType.isEmpty()) {
+            actvIncidentType.setError("Incident type is required");
+            actvIncidentType.requestFocus();
+            Toast.makeText(this, "Please select or enter an incident type", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // 3. Accusation (REQUIRED)
+        String accusation = etAccusation.getText().toString().trim();
+        if (accusation.isEmpty()) {
+            etAccusation.setError("Accusation is required");
+            etAccusation.requestFocus();
+            Toast.makeText(this, "Please select or enter an accusation", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // 4. Relationship (REQUIRED)
+        String relationship = actvRelationship.getText().toString().trim();
+        if (relationship.isEmpty()) {
+            actvRelationship.setError("Relationship is required");
+            actvRelationship.requestFocus();
+            Toast.makeText(this, "Please select or enter a relationship", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // ===== OPTIONAL FIELD VALIDATION =====
         String complainantContact = etComplainantContact.getText().toString().trim();
         
-        // Validate complainant phone number
+        // Validate complainant phone number (OPTIONAL but if provided, must be valid)
         if (!complainantContact.isEmpty() && !PhoneNumberValidator.isValidPhilippineNumber(complainantContact)) {
             etComplainantContact.setError(PhoneNumberValidator.getErrorMessage(complainantContact));
             etComplainantContact.requestFocus();
@@ -724,12 +946,12 @@ public class EditReportActivity extends BaseActivity {
             return;
         }
         
-        // Update report fields
+        // Update report fields with validated data
         // Note: Incident date/time are read-only in edit mode (set during creation)
-        report.setComplainantName(etComplainantName.getText().toString().trim());
+        report.setComplainantName(complainantName);
         report.setComplainantContact(complainantContact);
         report.setComplainantAddress(etComplainantAddress.getText().toString().trim());
-        report.setIncidentType(actvIncidentType.getText().toString().trim());
+        report.setIncidentType(incidentType);
         report.setIncidentLocation(etIncidentLocation.getText().toString().trim());
         report.setNarrative(etNarrative.getText().toString().trim());
         
@@ -737,8 +959,6 @@ public class EditReportActivity extends BaseActivity {
         String respondentAlias = etRespondentAlias.getText().toString().trim();
         String respondentAddress = etRespondentAddress.getText().toString().trim();
         String respondentContact = etRespondentContact.getText().toString().trim();
-        String accusation = etAccusation.getText().toString().trim();
-        String relationship = actvRelationship.getText().toString().trim();
         
         // Validate respondent phone number if provided
         if (!respondentContact.isEmpty() && !PhoneNumberValidator.isValidPhilippineNumber(respondentContact)) {
@@ -811,6 +1031,13 @@ public class EditReportActivity extends BaseActivity {
                 
                 runOnUiThread(() -> {
                     com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
+                    
+                    // Pass result back to ReportDetailActivity to trigger refresh
+                    Intent resultIntent = new Intent();
+                    resultIntent.putExtra("REPORT_UPDATED", true);
+                    resultIntent.putExtra("REPORT_ID", reportId);
+                    setResult(RESULT_OK, resultIntent);
+                    
                     finish();
                 });
             } catch (Exception e) {

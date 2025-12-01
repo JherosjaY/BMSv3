@@ -86,7 +86,7 @@ public class AdminDashboardActivity extends BaseActivity {
         });
         
         cardViewReports.setOnClickListener(v -> {
-            startActivity(new Intent(this, AdminViewAllReportsActivity.class));
+            startActivity(new Intent(this, AdminReportOversightActivity.class));
         });
         
         cardSendNotification.setOnClickListener(v -> {

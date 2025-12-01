@@ -83,19 +83,38 @@ public class ViewAssignedReportsActivity extends BaseActivity {
         tvResolvedCount = findViewById(R.id.tvResolvedCount);
         btnSort = findViewById(R.id.btnSort);
         chipScrollView = findViewById(R.id.chipScrollView);
-        chipAll = findViewById(R.id.chipAll);
         chipPending = findViewById(R.id.chipPending);
         chipAssigned = findViewById(R.id.chipAssigned);
         chipOngoing = findViewById(R.id.chipOngoing);
         chipResolved = findViewById(R.id.chipResolved);
         emptyStateIcon = findViewById(R.id.emptyStateIcon);
-        emptyStateTitle = findViewById(R.id.emptyStateTitle);
         emptyStateMessage = findViewById(R.id.emptyStateMessage);
-        
+            
+        // Scale empty state icon to be larger
+        if (emptyStateIcon != null) {
+            emptyStateIcon.setScaleX(1.5f);
+            emptyStateIcon.setScaleY(1.5f);
+        }
+            
+        // Setup RecyclerView
         if (recyclerReports != null) {
             adapter = new ReportAdapter(filteredReports, report -> {
                 try {
-                    Intent intent = new Intent(this, OfficerCaseDetailActivity.class);
+                    String userRole = preferencesManager.getUserRole();
+                    Class<?> targetActivity;
+                    
+                    if ("Admin".equalsIgnoreCase(userRole)) {
+                        // Admin goes to AdminCaseDetailActivity (Assign Officer)
+                        targetActivity = AdminCaseDetailActivity.class;
+                    } else if ("Officer".equalsIgnoreCase(userRole)) {
+                        // Officer goes to OfficerCaseDetailActivity (View Person History & Start Investigation)
+                        targetActivity = OfficerCaseDetailActivity.class;
+                    } else {
+                        // Regular User goes to ReportDetailActivity (Edit & Delete)
+                        targetActivity = ReportDetailActivity.class;
+                    }
+                    
+                    Intent intent = new Intent(this, targetActivity);
                     intent.putExtra("REPORT_ID", report.getId());
                     startActivity(intent);
                 } catch (Exception e) {
@@ -232,8 +251,7 @@ public class ViewAssignedReportsActivity extends BaseActivity {
                         }
                         
                         runOnUiThread(() -> {
-                            allReports.clear();
-                            allReports.addAll(apiReports);
+                            filterReportsByUser(apiReports);
                             filterReports();
                             updateStatistics();
                         });
@@ -259,8 +277,7 @@ public class ViewAssignedReportsActivity extends BaseActivity {
                 List<BlotterReport> reports = database.blotterReportDao().getAllReports();
                 
                 runOnUiThread(() -> {
-                    allReports.clear();
-                    allReports.addAll(reports);
+                    filterReportsByUser(reports);
                     filterReports();
                     updateStatistics();
                 });
@@ -270,18 +287,59 @@ public class ViewAssignedReportsActivity extends BaseActivity {
         });
     }
     
+    private void filterReportsByUser(List<BlotterReport> reports) {
+        allReports.clear();
+        String userRole = preferencesManager.getUserRole();
+        
+        for (BlotterReport report : reports) {
+            // Admin sees ALL reports (no filtering by user)
+            if ("Admin".equalsIgnoreCase(userRole)) {
+                allReports.add(report);
+            } else if ("Officer".equalsIgnoreCase(userRole)) {
+                // Officer sees reports assigned to them
+                boolean isAssignedToOfficer = false;
+                
+                if (report.getAssignedOfficerId() != null && report.getAssignedOfficerId().intValue() == userId) {
+                    isAssignedToOfficer = true;
+                }
+                
+                if (!isAssignedToOfficer && report.getAssignedOfficerIds() != null && !report.getAssignedOfficerIds().isEmpty()) {
+                    String[] officerIds = report.getAssignedOfficerIds().split(",");
+                    for (String id : officerIds) {
+                        try {
+                            if (Integer.parseInt(id.trim()) == userId) {
+                                isAssignedToOfficer = true;
+                                break;
+                            }
+                        } catch (NumberFormatException e) {
+                            // Ignore
+                        }
+                    }
+                }
+                
+                if (isAssignedToOfficer) {
+                    allReports.add(report);
+                }
+            } else {
+                // Regular user sees only their own reports
+                if (report.getReportedById() == userId) {
+                    allReports.add(report);
+                }
+            }
+        }
+    }
+    
     private void filterReports() {
         filteredReports.clear();
         
-        if (searchQuery.isEmpty()) {
-            for (BlotterReport report : allReports) {
-                if (report.getStatus() != null && "assigned".equalsIgnoreCase(report.getStatus())) {
+        // Filter for ASSIGNED reports ONLY (case-insensitive)
+        for (BlotterReport report : allReports) {
+            String status = report.getStatus() != null ? report.getStatus().toUpperCase().trim() : "";
+            // Show ONLY "ASSIGNED" status in this view
+            if ("ASSIGNED".equals(status)) {
+                if (searchQuery.isEmpty()) {
                     filteredReports.add(report);
-                }
-            }
-        } else {
-            for (BlotterReport report : allReports) {
-                if (report.getStatus() != null && "assigned".equalsIgnoreCase(report.getStatus())) {
+                } else {
                     String caseNumber = report.getCaseNumber() != null ? report.getCaseNumber().toLowerCase() : "";
                     String incidentType = report.getIncidentType() != null ? report.getIncidentType().toLowerCase() : "";
                     String complainant = report.getComplainantName() != null ? report.getComplainantName().toLowerCase() : "";
@@ -410,7 +468,6 @@ public class ViewAssignedReportsActivity extends BaseActivity {
         try {
             Intent intent = new Intent(this, activityClass);
             startActivity(intent);
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
             finish();
         } catch (Exception e) {
             android.util.Log.e("ViewAssignedReports", "Navigation error: " + e.getMessage(), e);

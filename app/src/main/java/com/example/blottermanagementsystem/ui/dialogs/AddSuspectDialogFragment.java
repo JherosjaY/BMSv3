@@ -26,7 +26,7 @@ import java.util.concurrent.Executors;
 public class AddSuspectDialogFragment extends DialogFragment {
 
     private EditText etFullName, etAlias, etAddress, etDescription;
-    private MaterialButton btnSave;
+    private MaterialButton btnSave, btnSkip;
     private int reportId;
     private OnSuspectSavedListener listener;
 
@@ -46,9 +46,23 @@ public class AddSuspectDialogFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Dialog);
+        // Use transparent background to show the MaterialCardView properly
+        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Dialog_MinWidth);
         if (getArguments() != null) {
             reportId = getArguments().getInt("report_id");
+        }
+    }
+    
+    @Override
+    public void onStart() {
+        super.onStart();
+        // Make dialog background transparent to show MaterialCardView
+        if (getDialog() != null && getDialog().getWindow() != null) {
+            getDialog().getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            // Set dialog to match parent width with padding
+            android.view.WindowManager.LayoutParams params = getDialog().getWindow().getAttributes();
+            params.width = (int) (getResources().getDisplayMetrics().widthPixels * 0.9);
+            getDialog().getWindow().setAttributes(params);
         }
     }
 
@@ -71,10 +85,47 @@ public class AddSuspectDialogFragment extends DialogFragment {
         etAddress = view.findViewById(R.id.etSuspectAddress);
         etDescription = view.findViewById(R.id.etSuspectDescription);
         btnSave = view.findViewById(R.id.btnSaveSuspect);
+        btnSkip = view.findViewById(R.id.btnSkipSuspect);
     }
 
     private void setupListeners() {
         btnSave.setOnClickListener(v -> saveSuspect());
+        btnSkip.setOnClickListener(v -> skipSuspect()); // ✅ SKIP button for testing
+    }
+    
+    private void skipSuspect() {
+        // ✅ SKIP: Create dummy suspect and mark as completed (for testing flow)
+        Suspect suspect = new Suspect();
+        suspect.setBlotterReportId(reportId);
+        suspect.setName("🧪 Test Suspect (Skipped)");
+        suspect.setAlias("Test");
+        suspect.setAddress("Test Address");
+        suspect.setDescription("Skipped for testing");
+        suspect.setDateAdded(System.currentTimeMillis());
+        
+        // Save to database in background thread
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                BlotterDatabase database = BlotterDatabase.getDatabase(getContext());
+                if (database != null) {
+                    long id = database.suspectDao().insertSuspect(suspect);
+                    suspect.setId((int) id);
+                    
+                    // Notify on main thread
+                    getActivity().runOnUiThread(() -> {
+                        if (listener != null) {
+                            listener.onSuspectSaved(suspect);
+                        }
+                        Toast.makeText(getContext(), "⏭️ Suspect skipped (test mode)", Toast.LENGTH_SHORT).show();
+                        dismiss();
+                    });
+                }
+            } catch (Exception e) {
+                getActivity().runOnUiThread(() -> {
+                    Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     private void saveSuspect() {

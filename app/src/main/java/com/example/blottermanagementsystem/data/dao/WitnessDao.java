@@ -23,4 +23,10 @@ public interface WitnessDao {
     
     @Query("DELETE FROM witnesses WHERE blotterReportId = :reportId")
     void deleteWitnessesByReportId(int reportId);
+    
+    @Query("SELECT COUNT(*) FROM witnesses WHERE blotterReportId = :reportId")
+    int getWitnessCountByReport(int reportId);
+    
+    @Query("SELECT * FROM witnesses WHERE blotterReportId = :reportId")
+    List<Witness> getWitnessesByReport(int reportId);
 }

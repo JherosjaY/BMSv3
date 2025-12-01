@@ -5,13 +5,8 @@
     android:viewportWidth="24"
     android:viewportHeight="24">
     
-    <!-- Circle -->
+    <!-- Simple Tick Mark (Checkmark only, no circle) -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 Z" />
-    
-    <!-- Check mark -->
-    <path
-        android:fillColor="#3b82f6"
-        android:pathData="M10,17 L5,12 L6.41,10.59 L10,14.17 L17.59,6.58 L19,8 L10,17 Z" />
+        android:fillColor="@android:color/white"
+        android:pathData="M9,16.17L4.83,12l-1.42,1.41L9,19 21,7l-1.41,-1.41z" />
 </vector>

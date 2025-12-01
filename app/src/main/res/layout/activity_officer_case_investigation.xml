@@ -87,6 +87,68 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <!-- Investigation Timeline Section - Container 1: Case Progress (View-Only) -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_medium"
+                android:layout_marginTop="@dimen/spacing_large"
+                android:layout_marginBottom="@dimen/spacing_medium"
+                android:text="📊 Case Progress"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_medium"
+                android:layout_marginEnd="@dimen/spacing_medium"
+                android:layout_marginBottom="@dimen/spacing_large"
+                app:cardBackgroundColor="@color/card_background"
+                app:cardCornerRadius="@dimen/card_corner_radius"
+                app:cardElevation="@dimen/card_elevation">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvCaseProgress"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacing_medium"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+            </androidx.cardview.widget.CardView>
+
+            <!-- Investigation Timeline Section - Container 2: Investigation Actions (Interactive) -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_medium"
+                android:layout_marginTop="@dimen/spacing_large"
+                android:layout_marginBottom="@dimen/spacing_medium"
+                android:text="🔍 Investigation Actions"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_medium"
+                android:layout_marginEnd="@dimen/spacing_medium"
+                android:layout_marginBottom="@dimen/spacing_large"
+                app:cardBackgroundColor="@color/card_background"
+                app:cardCornerRadius="@dimen/card_corner_radius"
+                app:cardElevation="@dimen/card_elevation">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvInvestigationActions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacing_medium"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+            </androidx.cardview.widget.CardView>
+
             <!-- Assigned Officers Card -->
             <androidx.cardview.widget.CardView
                 android:id="@+id/cardAssignedOfficers"
@@ -786,103 +848,21 @@
                 app:cornerRadius="12dp"
                 app:iconTint="@color/white" />
 
-            <!-- Investigation Features - Full Width Buttons -->
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAddWitness"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
+            <!-- Investigation Features Section Title -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_medium"
                 android:layout_marginTop="@dimen/spacing_large"
-                android:text="Witness"
-                android:textColor="@color/white"
-                android:visibility="gone"
-                android:textSize="14sp"
-                app:backgroundTint="@color/electric_blue"
-                app:cornerRadius="8dp"
-                app:iconGravity="textStart"
-                app:iconTint="@color/white"
-                app:icon="@drawable/ic_witness" />
+                android:layout_marginBottom="@dimen/spacing_medium"
+                android:text="Investigation Actions"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAddSuspect"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="8dp"
-                android:text="Suspect"
-                android:textColor="@color/white"
-                android:visibility="gone"
-                android:textSize="14sp"
-                app:backgroundTint="@color/error_red"
-                app:cornerRadius="8dp"
-                app:iconGravity="textStart"
-                app:iconTint="@color/white"
-                app:icon="@drawable/ic_suspect" />
+            <!-- Investigation Features - Full Width Buttons with Better Spacing -->
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAddEvidence"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="8dp"
-                android:text="Evidence"
-                android:textColor="@color/white"
-                android:visibility="gone"
-                android:textSize="14sp"
-                app:backgroundTint="@color/warning_yellow"
-                app:cornerRadius="8dp"
-                app:iconGravity="textStart"
-                app:iconTint="@color/white"
-                app:icon="@drawable/ic_evidence" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnCreateHearing"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="8dp"
-                android:text="Hearing"
-                android:textColor="@color/white"
-                android:visibility="gone"
-                android:textSize="14sp"
-                app:backgroundTint="@color/purple_500"
-                app:cornerRadius="8dp"
-                app:iconGravity="textStart"
-                app:iconTint="@color/white"
-                app:icon="@drawable/ic_hearing" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnDocumentResolution"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="8dp"
-                android:text="Resolution"
-                android:textColor="@color/white"
-                android:visibility="gone"
-                android:textSize="14sp"
-                app:backgroundTint="@color/success_green"
-                app:cornerRadius="8dp"
-                app:iconGravity="textStart"
-                app:iconTint="@color/white"
-                app:icon="@drawable/ic_resolution" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnKPForms"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="8dp"
-                android:text="KP Form"
-                android:textColor="@color/white"
-                android:visibility="gone"
-                android:textSize="14sp"
-                app:backgroundTint="@color/orange"
-                app:cornerRadius="8dp"
-                app:iconGravity="textStart"
-                app:iconTint="@color/white"
-                app:icon="@drawable/ic_kp_form" />
 
             <!-- Edit and Delete Buttons -->
             <LinearLayout

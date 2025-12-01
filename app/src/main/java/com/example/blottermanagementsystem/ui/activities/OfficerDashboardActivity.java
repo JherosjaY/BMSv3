@@ -183,6 +183,7 @@ public class OfficerDashboardActivity extends BaseActivity {
 
         cardMyCases.setOnClickListener(v -> {
             Intent intent = new Intent(this, OfficerViewAssignedReportsActivity_New.class);
+            intent.putExtra("SELECTED_CHIP", "ALL");
             startActivity(intent);
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         });
@@ -219,11 +220,12 @@ public class OfficerDashboardActivity extends BaseActivity {
             if (cardTotalCases != null) {
                 cardTotalCases.setOnClickListener(v -> {
                     try {
-                        Intent intent = new Intent(this, OfficerViewAllReportsActivity_New.class);
+                        Intent intent = new Intent(this, OfficerViewAssignedReportsActivity_New.class);
+                        intent.putExtra("SELECTED_CHIP", "ALL");
                         startActivity(intent);
                         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
                     } catch (Exception e) {
-                        android.util.Log.e("OfficerDashboard", "Error opening ViewAllReports", e);
+                        android.util.Log.e("OfficerDashboard", "Error opening ViewAssignedReports", e);
                     }
                 });
             }
@@ -233,6 +235,7 @@ public class OfficerDashboardActivity extends BaseActivity {
                 cardPending.setOnClickListener(v -> {
                     try {
                         Intent intent = new Intent(this, OfficerViewAssignedReportsActivity_New.class);
+                        intent.putExtra("SELECTED_CHIP", "ASSIGNED");
                         startActivity(intent);
                         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
                     } catch (Exception e) {

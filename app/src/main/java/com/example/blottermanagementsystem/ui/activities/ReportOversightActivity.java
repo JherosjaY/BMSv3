@@ -124,11 +124,11 @@ public class ReportOversightActivity extends BaseActivity {
             public void afterTextChanged(android.text.Editable s) {}
         });
         
-        // Filter chips navigate to separate admin screens
+        // Filter chips navigate to admin report oversight screen
         if (chipAll != null) {
             chipAll.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isChecked) {
-                    Intent intent = new Intent(this, AdminViewAllReportsActivity.class);
+                    Intent intent = new Intent(this, AdminReportOversightActivity.class);
                     startActivity(intent);
                     overridePendingTransition(android.R.anim.slide_in_left, android.R.anim.slide_out_right);
                 }
@@ -138,7 +138,7 @@ public class ReportOversightActivity extends BaseActivity {
         if (chipPending != null) {
             chipPending.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isChecked) {
-                    Intent intent = new Intent(this, AdminViewPendingReportsActivity.class);
+                    Intent intent = new Intent(this, AdminReportOversightActivity.class);
                     startActivity(intent);
                     overridePendingTransition(android.R.anim.slide_in_left, android.R.anim.slide_out_right);
                 }
@@ -148,7 +148,7 @@ public class ReportOversightActivity extends BaseActivity {
         if (chipActive != null) {
             chipActive.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isChecked) {
-                    Intent intent = new Intent(this, AdminViewOngoingReportsActivity.class);
+                    Intent intent = new Intent(this, AdminReportOversightActivity.class);
                     startActivity(intent);
                     overridePendingTransition(android.R.anim.slide_in_left, android.R.anim.slide_out_right);
                 }
@@ -158,7 +158,7 @@ public class ReportOversightActivity extends BaseActivity {
         if (chipResolved != null) {
             chipResolved.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isChecked) {
-                    Intent intent = new Intent(this, AdminViewResolvedReportsActivity.class);
+                    Intent intent = new Intent(this, AdminReportOversightActivity.class);
                     startActivity(intent);
                     overridePendingTransition(android.R.anim.slide_in_left, android.R.anim.slide_out_right);
                 }

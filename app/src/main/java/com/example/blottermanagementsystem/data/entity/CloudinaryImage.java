@@ -2,6 +2,7 @@ package com.example.blottermanagementsystem.data.entity;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
+import androidx.room.Ignore;
 
 /**
  * CloudinaryImage - Stores metadata for images uploaded to Cloudinary
@@ -22,6 +23,7 @@ public class CloudinaryImage {
     // Constructors
     public CloudinaryImage() {}
     
+    @Ignore
     public CloudinaryImage(int userId, String publicId, String secureUrl, String fileName) {
         this.userId = userId;
         this.publicId = publicId;

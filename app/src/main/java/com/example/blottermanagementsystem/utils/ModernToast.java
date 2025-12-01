@@ -11,6 +11,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.example.blottermanagementsystem.R;
 
 /**
  * Modern Toast with Icons and Advanced Styling
@@ -97,13 +98,11 @@ public class ModernToast {
             background.setColor(backgroundColor);
             layout.setBackground(background);
             
-            // Add icon
-            TextView iconView = new TextView(context);
-            iconView.setText(iconText);
-            iconView.setTextSize(18);
+            // Add app logo icon instead of warning/error icons
+            ImageView iconView = new ImageView(context);
+            iconView.setImageResource(R.drawable.ic_app_logo); // App logo
             LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
+                48, 48); // 48dp x 48dp
             iconParams.setMargins(0, 0, 16, 0);
             iconView.setLayoutParams(iconParams);
             layout.addView(iconView);
@@ -150,13 +149,11 @@ public class ModernToast {
             background.setColor(Color.parseColor(backgroundColor));
             layout.setBackground(background);
             
-            // Add icon
-            TextView iconView = new TextView(context);
-            iconView.setText(icon);
-            iconView.setTextSize(18);
+            // Add app logo icon instead of custom icon
+            ImageView iconView = new ImageView(context);
+            iconView.setImageResource(R.drawable.ic_app_logo); // App logo
             LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
+                48, 48); // 48dp x 48dp
             iconParams.setMargins(0, 0, 16, 0);
             iconView.setLayoutParams(iconParams);
             layout.addView(iconView);
@@ -224,13 +221,11 @@ public class ModernToast {
             layout.setElevation(8f);
             layout.setBackground(background);
             
-            // Icon with larger size
-            TextView iconView = new TextView(context);
-            iconView.setText(icon);
-            iconView.setTextSize(22);
+            // App logo icon instead of emoji icon
+            ImageView iconView = new ImageView(context);
+            iconView.setImageResource(R.drawable.ic_app_logo); // App logo
             LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
+                56, 56); // 56dp x 56dp for modern toast
             iconParams.setMargins(0, 0, 16, 0);
             iconView.setLayoutParams(iconParams);
             layout.addView(iconView);

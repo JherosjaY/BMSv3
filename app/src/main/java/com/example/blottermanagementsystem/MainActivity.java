@@ -30,51 +30,84 @@ public class MainActivity extends BaseActivity {
         
         preferencesManager = new PreferencesManager(this);
         database = BlotterDatabase.getDatabase(this);
-        
         createAdminAccountIfNotExists();
         
-        // Determine start destination - SYNCED WITH KOTLIN VERSION
-        android.util.Log.d("MainActivity", "Checking onboarding: " + preferencesManager.isOnboardingCompleted());
-        android.util.Log.d("MainActivity", "Checking permissions: " + preferencesManager.isPermissionsGranted());
-        android.util.Log.d("MainActivity", "Checking logged in: " + preferencesManager.isLoggedIn());
+        // CRITICAL FIX: On first launch after clear data, ensure flags are properly initialized
+        boolean isOnboardingCompleted = preferencesManager.isOnboardingCompleted();
+        boolean isPermissionsGranted = preferencesManager.isPermissionsGranted();
+        boolean isLoggedIn = preferencesManager.isLoggedIn();
         
-        if (!preferencesManager.isOnboardingCompleted()) {
-            // Show onboarding first (once only)
+        android.util.Log.d("MainActivity", "Initial state - Onboarding: " + isOnboardingCompleted + ", Permissions: " + isPermissionsGranted + ", LoggedIn: " + isLoggedIn);
+        
+        // CRITICAL: If onboarding is NOT completed, we're in a fresh/reset state
+        // Reset ALL flags to false to ensure clean onboarding flow
+        if (!isOnboardingCompleted) {
+            android.util.Log.d("MainActivity", "⚠️ FRESH STATE DETECTED - Onboarding not completed");
+            android.util.Log.d("MainActivity", "🔄 Resetting ALL flags to ensure clean onboarding flow");
+            preferencesManager.setOnboardingCompleted(false);
+            preferencesManager.setPermissionsGranted(false);
+            preferencesManager.setLoggedIn(false);
+            preferencesManager.setHasSelectedProfilePicture(false);
+            isOnboardingCompleted = false;
+            isPermissionsGranted = false;
+            isLoggedIn = false;
+            android.util.Log.d("MainActivity", "✅ All flags reset to false - Onboarding will show");
+        }
+        
+        // Determine start destination - SYNCED WITH KOTLIN VERSION (MainActivity.kt lines 231-243)
+        // Flags naturally default to false and persist across app launches
+        // They only reset when user clears app data (which is correct behavior)
+        android.util.Log.d("MainActivity", "🔍 === APP START ROUTING ===");
+        android.util.Log.d("MainActivity", "Onboarding completed: " + isOnboardingCompleted);
+        android.util.Log.d("MainActivity", "Permissions granted: " + isPermissionsGranted);
+        android.util.Log.d("MainActivity", "Logged in: " + isLoggedIn);
+        android.util.Log.d("MainActivity", "User Role: " + preferencesManager.getUserRole());
+        // KOTLIN LOGIC: Check flags in order (using local variables to ensure consistency)
+        if (!isOnboardingCompleted) {
+            // 1. Show onboarding first
+            android.util.Log.d("MainActivity", "🎬 ONBOARDING NOT COMPLETED - Launching OnboardingActivity");
             startActivity(new Intent(this, OnboardingActivity.class));
             finish();
-        } else if (!preferencesManager.isPermissionsGranted()) {
-            // Show permissions screen (once only, after onboarding)
+        } else if (!isPermissionsGranted) {
+            // 2. Then show permissions
+            android.util.Log.d("MainActivity", "🔐 PERMISSIONS NOT GRANTED - Launching PermissionsSetupActivity");
             startActivity(new Intent(this, com.example.blottermanagementsystem.ui.activities.PermissionsSetupActivity.class));
             finish();
-        } else if (!preferencesManager.isLoggedIn()) {
-            // Not logged in - show login/register
-            android.util.Log.d("MainActivity", "✅ Going to AuthActivity (Login/Register)");
+        } else if (!isLoggedIn) {
+            // 3. Then show login/welcome
+            android.util.Log.d("MainActivity", "🔓 NOT LOGGED IN - Going to WelcomeActivity (Login/Register)");
             startActivity(new Intent(this, com.example.blottermanagementsystem.ui.activities.WelcomeActivity.class));
             finish();
         } else {
-            // Logged in - check role and navigate accordingly
+            // 4. User is logged in - check role and profile picture requirement
             String role = preferencesManager.getUserRole();
+            android.util.Log.d("MainActivity", "✅ USER LOGGED IN - User role: " + role);
             
+            // Admin and Officer roles require re-login when app is reopened
+            // They must go to WelcomeActivity (Login page) for security
             if ("Admin".equals(role)) {
-                // Admin - go directly to dashboard
-                startActivity(new Intent(this, AdminDashboardActivity.class));
+                android.util.Log.d("MainActivity", "👨‍💼 ADMIN ROLE - Requiring re-login, going to WelcomeActivity");
+                // Clear login flag to force re-login
+                preferencesManager.setLoggedIn(false);
+                startActivity(new Intent(this, com.example.blottermanagementsystem.ui.activities.WelcomeActivity.class));
                 finish();
             } else if ("Officer".equals(role)) {
-                // Officer - check if password has been changed
-                if (!preferencesManager.hasPasswordChanged()) {
-                    // Password not changed yet - go to welcome screen
-                    android.util.Log.d("MainActivity", "✅ Officer password not changed - going to OfficerWelcomeActivity");
-                    startActivity(new Intent(this, com.example.blottermanagementsystem.ui.activities.OfficerWelcomeActivity.class));
-                } else {
-                    // Password already changed - go to dashboard
-                    android.util.Log.d("MainActivity", "✅ Officer password changed - going to OfficerDashboardActivity");
-                    startActivity(new Intent(this, OfficerDashboardActivity.class));
-                }
+                android.util.Log.d("MainActivity", "👮 OFFICER ROLE - Requiring re-login, going to WelcomeActivity");
+                // Clear login flag to force re-login
+                preferencesManager.setLoggedIn(false);
+                startActivity(new Intent(this, com.example.blottermanagementsystem.ui.activities.WelcomeActivity.class));
                 finish();
             } else {
-                // Regular Users - check if they selected profile picture
-                // Need to check database, so do it in background thread
-                checkProfilePictureAndNavigate();
+                // User role - check if profile picture selected
+                if (!preferencesManager.hasSelectedProfilePicture()) {
+                    android.util.Log.d("MainActivity", "🖼️ USER ROLE - PROFILE PICTURE NOT SELECTED - Going to ProfilePictureSelectionActivity");
+                    startActivity(new Intent(this, ProfilePictureSelectionActivity.class));
+                    finish();
+                } else {
+                    android.util.Log.d("MainActivity", "✅ USER ROLE - PROFILE PICTURE SELECTED - Going to UserDashboard");
+                    startActivity(new Intent(this, UserDashboardActivity.class));
+                    finish();
+                }
             }
         }
     }
@@ -162,5 +195,20 @@ public class MainActivity extends BaseActivity {
             android.util.Log.e("MainActivity", "Error hashing password", e);
             return password; // Fallback to plain text (not recommended)
         }
+    }
+    
+    /**
+     * DEBUG METHOD: Reset all flags to see the full onboarding flow
+     * Call this to reset: onboarding, permissions, and login flags
+     */
+    private void resetAllFlags() {
+        android.util.Log.d("MainActivity", "🔄 RESETTING ALL FLAGS FOR TESTING");
+        preferencesManager.setOnboardingCompleted(false);
+        preferencesManager.setPermissionsGranted(false);
+        preferencesManager.setLoggedIn(false);
+        android.util.Log.d("MainActivity", "✅ All flags reset!");
+        android.util.Log.d("MainActivity", "   - onboarding_completed: false");
+        android.util.Log.d("MainActivity", "   - permissions_granted: false");
+        android.util.Log.d("MainActivity", "   - is_logged_in: false");
     }
 }

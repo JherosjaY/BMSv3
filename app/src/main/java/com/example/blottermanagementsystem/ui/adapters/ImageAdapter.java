@@ -58,7 +58,13 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
             if (holder.deleteContainer != null) {
                 holder.deleteContainer.setVisibility(View.VISIBLE);
             }
-            holder.btnDelete.setOnClickListener(v -> listener.onImageDelete(position));
+            // Use getBindingAdapterPosition() to get the correct position at click time
+            holder.btnDelete.setOnClickListener(v -> {
+                int currentPosition = holder.getBindingAdapterPosition();
+                if (currentPosition != RecyclerView.NO_POSITION) {
+                    listener.onImageDelete(currentPosition);
+                }
+            });
         } else {
             if (holder.deleteContainer != null) {
                 holder.deleteContainer.setVisibility(View.GONE);

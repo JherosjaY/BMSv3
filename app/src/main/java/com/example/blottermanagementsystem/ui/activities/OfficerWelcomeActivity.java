@@ -2,6 +2,7 @@ package com.example.blottermanagementsystem.ui.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
@@ -12,12 +13,15 @@ import com.example.blottermanagementsystem.utils.PreferencesManager;
 import com.example.blottermanagementsystem.utils.SecurityUtils;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import java.util.concurrent.Executors;
 
 public class OfficerWelcomeActivity extends AppCompatActivity {
     
+    private ImageButton btnBack;
     private TextView tvOfficerIcon;
     private TextInputEditText etCurrentPassword, etNewPassword, etConfirmPassword;
+    private TextInputLayout tilCurrentPassword, tilNewPassword, tilConfirmPassword;
     private MaterialButton btnChangePassword;
     private PreferencesManager preferencesManager;
     private BlotterDatabase database;
@@ -70,14 +74,19 @@ public class OfficerWelcomeActivity extends AppCompatActivity {
     }
     
     private void initViews() {
+        btnBack = findViewById(R.id.btnBack);
         tvOfficerIcon = findViewById(R.id.tvOfficerIcon);
         etCurrentPassword = findViewById(R.id.etCurrentPassword);
         etNewPassword = findViewById(R.id.etNewPassword);
         etConfirmPassword = findViewById(R.id.etConfirmPassword);
+        tilCurrentPassword = findViewById(R.id.tilCurrentPassword);
+        tilNewPassword = findViewById(R.id.tilNewPassword);
+        tilConfirmPassword = findViewById(R.id.tilConfirmPassword);
         btnChangePassword = findViewById(R.id.btnChangePassword);
     }
     
     private void setupListeners() {
+        btnBack.setOnClickListener(v -> performLogout());
         btnChangePassword.setOnClickListener(v -> changePassword());
     }
     
@@ -128,15 +137,22 @@ public class OfficerWelcomeActivity extends AppCompatActivity {
         String newPassword = etNewPassword.getText().toString().trim();
         String confirmPassword = etConfirmPassword.getText().toString().trim();
         
+        // Clear previous errors
+        tilCurrentPassword.setBoxStrokeColor(getResources().getColor(R.color.text_input_box_stroke));
+        tilNewPassword.setBoxStrokeColor(getResources().getColor(R.color.text_input_box_stroke));
+        tilConfirmPassword.setBoxStrokeColor(getResources().getColor(R.color.text_input_box_stroke));
+        
         // Validate inputs
         if (currentPassword.isEmpty()) {
             Toast.makeText(this, "⚠️ Please enter current password", Toast.LENGTH_SHORT).show();
+            tilCurrentPassword.setBoxStrokeColor(getResources().getColor(R.color.error_red));
             etCurrentPassword.requestFocus();
             return;
         }
         
         if (newPassword.isEmpty()) {
             Toast.makeText(this, "⚠️ Please enter new password", Toast.LENGTH_SHORT).show();
+            tilNewPassword.setBoxStrokeColor(getResources().getColor(R.color.error_red));
             etNewPassword.requestFocus();
             return;
         }
@@ -144,12 +160,14 @@ public class OfficerWelcomeActivity extends AppCompatActivity {
         // STRICT PASSWORD VALIDATION - Same as login screen
         if (!isValidPassword(newPassword)) {
             Toast.makeText(this, "⚠️ Password must be at least 8 characters with uppercase, lowercase, number, and special character", Toast.LENGTH_LONG).show();
+            tilNewPassword.setBoxStrokeColor(getResources().getColor(R.color.error_red));
             etNewPassword.requestFocus();
             return;
         }
         
         if (!newPassword.equals(confirmPassword)) {
             Toast.makeText(this, "⚠️ Passwords do not match", Toast.LENGTH_SHORT).show();
+            tilConfirmPassword.setBoxStrokeColor(getResources().getColor(R.color.error_red));
             etConfirmPassword.requestFocus();
             return;
         }
@@ -186,9 +204,9 @@ public class OfficerWelcomeActivity extends AppCompatActivity {
                 if (!passwordValid) {
                     android.util.Log.d("OfficerWelcome", "❌ Incorrect password attempt");
                     
-                    // Show error message
+                    // Show error message with red outline
                     Toast.makeText(this, "❌ Invalid password input", Toast.LENGTH_SHORT).show();
-                    etCurrentPassword.setError("Invalid password");
+                    tilCurrentPassword.setBoxStrokeColor(getResources().getColor(R.color.error_red));
                     etCurrentPassword.requestFocus();
                     
                     // Reset button state

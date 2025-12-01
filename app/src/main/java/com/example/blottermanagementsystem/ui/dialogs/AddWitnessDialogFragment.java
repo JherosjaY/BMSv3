@@ -27,7 +27,7 @@ import java.util.concurrent.Executors;
 public class AddWitnessDialogFragment extends DialogFragment {
 
     private EditText etFullName, etAddress, etContactNumber, etStatement;
-    private MaterialButton btnSave;
+    private MaterialButton btnSave, btnSkip;
     private int reportId;
     private OnWitnessSavedListener listener;
 
@@ -47,9 +47,23 @@ public class AddWitnessDialogFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Dialog);
+        // Use transparent background to show the MaterialCardView properly
+        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Dialog_MinWidth);
         if (getArguments() != null) {
             reportId = getArguments().getInt("report_id");
+        }
+    }
+    
+    @Override
+    public void onStart() {
+        super.onStart();
+        // Make dialog background transparent to show MaterialCardView
+        if (getDialog() != null && getDialog().getWindow() != null) {
+            getDialog().getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            // Set dialog to match parent width with padding
+            android.view.WindowManager.LayoutParams params = getDialog().getWindow().getAttributes();
+            params.width = (int) (getResources().getDisplayMetrics().widthPixels * 0.9);
+            getDialog().getWindow().setAttributes(params);
         }
     }
 
@@ -72,10 +86,47 @@ public class AddWitnessDialogFragment extends DialogFragment {
         etContactNumber = view.findViewById(R.id.etWitnessContactNumber);
         etStatement = view.findViewById(R.id.etWitnessStatement);
         btnSave = view.findViewById(R.id.btnSaveWitness);
+        btnSkip = view.findViewById(R.id.btnSkipWitness);
     }
 
     private void setupListeners() {
         btnSave.setOnClickListener(v -> saveWitness());
+        btnSkip.setOnClickListener(v -> skipWitness()); // ✅ SKIP button for testing
+    }
+    
+    private void skipWitness() {
+        // ✅ SKIP: Create dummy witness and mark as completed (for testing flow)
+        Witness witness = new Witness();
+        witness.setBlotterReportId(reportId);
+        witness.setName("🧪 Test Witness (Skipped)");
+        witness.setAddress("Test Address");
+        witness.setContactNumber("N/A");
+        witness.setStatement("Skipped for testing");
+        witness.setCreatedAt(System.currentTimeMillis());
+        
+        // Save to database in background thread
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                BlotterDatabase database = BlotterDatabase.getDatabase(getContext());
+                if (database != null) {
+                    long id = database.witnessDao().insertWitness(witness);
+                    witness.setId((int) id);
+                    
+                    // Notify on main thread
+                    getActivity().runOnUiThread(() -> {
+                        if (listener != null) {
+                            listener.onWitnessSaved(witness);
+                        }
+                        Toast.makeText(getContext(), "⏭️ Witness skipped (test mode)", Toast.LENGTH_SHORT).show();
+                        dismiss();
+                    });
+                }
+            } catch (Exception e) {
+                getActivity().runOnUiThread(() -> {
+                    Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     private void saveWitness() {

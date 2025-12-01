@@ -7,26 +7,15 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <!-- Advanced Loading Animation - Professional Hourglass with Multiple Effects -->
-    <ImageView
-        android:id="@+id/ivLoadingSpinner"
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:src="@drawable/hourglass_animated_real"
-        android:background="@android:color/transparent"
-        android:contentDescription="Advanced Loading Animation"
-        android:scaleType="centerInside" />
-        
-    <!-- Fallback ProgressBar (hidden by default) -->
+    <!-- Loading ProgressBar - Animated spinner -->
     <ProgressBar
         android:id="@+id/progressBar"
         style="?android:attr/progressBarStyle"
-        android:layout_width="64dp"
-        android:layout_height="64dp"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
         android:indeterminate="true"
         android:indeterminateTint="#3b82f6"
-        android:indeterminateTintMode="src_in"
-        android:visibility="gone" />
+        android:indeterminateTintMode="src_in" />
 
     <!-- Smart Loading Message (updates automatically with timeout stages) -->
     <TextView
@@ -38,11 +27,7 @@
         android:textColor="#ffffff"
         android:textSize="18sp"
         android:textStyle="bold"
-        android:background="#90000000"
-        android:padding="16dp"
         android:gravity="center"
-        android:minWidth="320dp"
-        android:minHeight="60dp"
         android:lineSpacingExtra="4dp" />
 
 </LinearLayout>

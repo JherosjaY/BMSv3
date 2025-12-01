@@ -31,20 +31,25 @@ public class ReportAdapter extends RecyclerView.Adapter<ReportAdapter.ReportView
     @NonNull
     @Override
     public ReportViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        android.util.Log.d("ReportAdapter", "onCreateViewHolder() called");
         View view = LayoutInflater.from(parent.getContext())
             .inflate(R.layout.item_report, parent, false);
+        android.util.Log.d("ReportAdapter", "Item view inflated successfully");
         return new ReportViewHolder(view);
     }
     
     @Override
     public void onBindViewHolder(@NonNull ReportViewHolder holder, int position) {
         BlotterReport report = reports.get(position);
+        android.util.Log.d("ReportAdapter", "Binding report at position " + position + ": " + report.getCaseNumber());
         holder.bind(report, listener);
     }
     
     @Override
     public int getItemCount() {
-        return reports.size();
+        int count = reports.size();
+        android.util.Log.d("ReportAdapter", "getItemCount() returning " + count);
+        return count;
     }
     
     public void updateReports(List<BlotterReport> newReports) {

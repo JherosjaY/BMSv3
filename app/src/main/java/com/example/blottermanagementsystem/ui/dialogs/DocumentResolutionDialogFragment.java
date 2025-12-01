@@ -29,7 +29,7 @@ public class DocumentResolutionDialogFragment extends DialogFragment {
 
     private Spinner spinnerResolutionType;
     private EditText etResolutionDetails;
-    private MaterialButton btnSave;
+    private MaterialButton btnSave, btnSkip;
     private int reportId;
     private OnResolutionSavedListener listener;
 
@@ -49,9 +49,23 @@ public class DocumentResolutionDialogFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Dialog);
+        // Use transparent background to show the MaterialCardView properly
+        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Dialog_MinWidth);
         if (getArguments() != null) {
             reportId = getArguments().getInt("report_id");
+        }
+    }
+    
+    @Override
+    public void onStart() {
+        super.onStart();
+        // Make dialog background transparent to show MaterialCardView
+        if (getDialog() != null && getDialog().getWindow() != null) {
+            getDialog().getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            // Set dialog to match parent width with padding
+            android.view.WindowManager.LayoutParams params = getDialog().getWindow().getAttributes();
+            params.width = (int) (getResources().getDisplayMetrics().widthPixels * 0.9);
+            getDialog().getWindow().setAttributes(params);
         }
     }
 
@@ -73,6 +87,7 @@ public class DocumentResolutionDialogFragment extends DialogFragment {
         spinnerResolutionType = view.findViewById(R.id.spinnerResolutionType);
         etResolutionDetails = view.findViewById(R.id.etResolutionDetails);
         btnSave = view.findViewById(R.id.btnSaveResolution);
+        btnSkip = view.findViewById(R.id.btnSkipResolution);
     }
 
     private void setupSpinner() {
@@ -85,6 +100,38 @@ public class DocumentResolutionDialogFragment extends DialogFragment {
 
     private void setupListeners() {
         btnSave.setOnClickListener(v -> saveResolution());
+        btnSkip.setOnClickListener(v -> skipResolution()); // ✅ SKIP button for testing
+    }
+    
+    private void skipResolution() {
+        // ✅ SKIP: Create dummy resolution and mark as completed (for testing flow)
+        Resolution resolution = new Resolution(reportId, "Settled", "🧪 Test Resolution (Skipped)", 0);
+        resolution.setResolvedDate(System.currentTimeMillis());
+        resolution.setCreatedAt(System.currentTimeMillis());
+        
+        // Save to database in background thread
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                BlotterDatabase database = BlotterDatabase.getDatabase(getContext());
+                if (database != null) {
+                    long id = database.resolutionDao().insertResolution(resolution);
+                    resolution.setId((int) id);
+                    
+                    // Notify on main thread
+                    getActivity().runOnUiThread(() -> {
+                        if (listener != null) {
+                            listener.onResolutionSaved(resolution);
+                        }
+                        Toast.makeText(getContext(), "⏭️ Resolution skipped (test mode)", Toast.LENGTH_SHORT).show();
+                        dismiss();
+                    });
+                }
+            } catch (Exception e) {
+                getActivity().runOnUiThread(() -> {
+                    Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     private void saveResolution() {

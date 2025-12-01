@@ -17,14 +17,41 @@ public class InvestigationStepAdapter extends RecyclerView.Adapter<Investigation
     
     private List<InvestigationStep> steps;
     private OnStepActionListener listener;
+    private boolean isInvestigationStarted = false;
+    private String userRole = "OFFICER";  // Default to OFFICER, can be OFFICER, ADMIN, or USER
+    private int reportId = -1;  // For view dialogs
     
     public interface OnStepActionListener {
         void onStepAction(InvestigationStep step);
+        void onViewWitnesses(int reportId);
+        void onViewSuspects(int reportId);
+        void onViewEvidence(int reportId);
+        void onViewHearings(int reportId);
+        void onViewResolution(int reportId);
     }
     
     public InvestigationStepAdapter(List<InvestigationStep> steps, OnStepActionListener listener) {
         this.steps = steps;
         this.listener = listener;
+    }
+    
+    public InvestigationStepAdapter(List<InvestigationStep> steps, OnStepActionListener listener, boolean isInvestigationStarted) {
+        this.steps = steps;
+        this.listener = listener;
+        this.isInvestigationStarted = isInvestigationStarted;
+    }
+    
+    public void setUserRole(String role) {
+        this.userRole = role != null ? role : "OFFICER";
+    }
+    
+    public void setReportId(int reportId) {
+        this.reportId = reportId;
+    }
+    
+    public void setInvestigationStarted(boolean started) {
+        this.isInvestigationStarted = started;
+        notifyDataSetChanged();
     }
     
     @NonNull
@@ -45,29 +72,73 @@ public class InvestigationStepAdapter extends RecyclerView.Adapter<Investigation
         
         // Update status indicator
         if (step.isCompleted()) {
+            // ✓ Completed - Green checkmark
             holder.ivStatus.setImageResource(R.drawable.ic_check_circle);
             holder.ivStatus.setColorFilter(holder.itemView.getContext()
-                    .getColor(R.color.electric_blue));
+                    .getColor(R.color.success_green));
         } else if (step.isInProgress()) {
-            holder.ivStatus.setImageResource(R.drawable.ic_radio_button_checked);
+            // ⏳ In Progress - Yellow hourglass icon
+            holder.ivStatus.setImageResource(R.drawable.ic_hourglass);
             holder.ivStatus.setColorFilter(holder.itemView.getContext()
-                    .getColor(R.color.electric_blue));
+                    .getColor(R.color.warning_yellow));
         } else {
+            // ⭕ Pending - Gray outline circle
             holder.ivStatus.setImageResource(R.drawable.ic_radio_button_unchecked);
             holder.ivStatus.setColorFilter(holder.itemView.getContext()
-                    .getColor(android.R.color.darker_gray));
+                    .getColor(R.color.text_secondary));
         }
         
-        // Show/hide action button
-        if (step.getActionText() != null && !step.isCompleted()) {
+        // Show/hide action button based on role
+        if (step.getActionText() != null) {
             holder.btnAction.setVisibility(View.VISIBLE);
-            holder.btnAction.setText(step.getActionText());
-            holder.btnAction.setIconResource(step.getActionIcon());
-            holder.btnAction.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onStepAction(step);
+            
+            if ("USER".equalsIgnoreCase(userRole)) {
+                // USER ROLE: Show view buttons (always enabled, read-only)
+                String buttonText = getViewButtonText(step.getTag());
+                holder.btnAction.setText(buttonText);
+                holder.btnAction.setIconResource(R.drawable.ic_visibility);  // Eye icon for view
+                holder.btnAction.setEnabled(true);
+                holder.btnAction.setAlpha(1.0f);
+                
+                holder.btnAction.setOnClickListener(v -> {
+                    if (listener != null && reportId != -1) {
+                        handleViewAction(step.getTag(), listener);
+                    }
+                });
+            } else if ("OFFICER".equalsIgnoreCase(userRole)) {
+                // OFFICER ROLE: Show add buttons (sequential unlock based on enabled flag)
+                if (!step.isCompleted()) {
+                    holder.btnAction.setText(step.getActionText());
+                    holder.btnAction.setIconResource(step.getActionIcon());
+                    
+                    // ✅ Check if button is enabled (based on previous steps)
+                    if (step.isEnabled()) {
+                        holder.btnAction.setEnabled(true);
+                        holder.btnAction.setAlpha(1.0f);
+                        holder.btnAction.setOnClickListener(v -> {
+                            if (listener != null) {
+                                listener.onStepAction(step);
+                            }
+                        });
+                    } else {
+                        // ❌ Button disabled - show why
+                        holder.btnAction.setEnabled(false);
+                        holder.btnAction.setAlpha(0.5f);
+                        holder.btnAction.setOnClickListener(v -> {
+                            android.widget.Toast.makeText(
+                                holder.itemView.getContext(),
+                                "⚠️ Complete previous steps first",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show();
+                        });
+                    }
+                } else {
+                    holder.btnAction.setVisibility(View.GONE);
                 }
-            });
+            } else {
+                // ADMIN ROLE: No buttons (read-only)
+                holder.btnAction.setVisibility(View.GONE);
+            }
         } else {
             holder.btnAction.setVisibility(View.GONE);
         }
@@ -94,6 +165,47 @@ public class InvestigationStepAdapter extends RecyclerView.Adapter<Investigation
     public void updateSteps(List<InvestigationStep> newSteps) {
         this.steps = newSteps;
         notifyDataSetChanged();
+    }
+    
+    private String getViewButtonText(String tag) {
+        if (tag == null) return "View";
+        
+        switch (tag.toLowerCase()) {
+            case "witnesses":
+                return "👥 View Witnesses";
+            case "suspects":
+                return "🚨 View Suspects";
+            case "evidence":
+                return "📸 View Evidence";
+            case "hearings":
+                return "📅 View Hearings";
+            case "resolution":
+                return "✅ View Resolution";
+            default:
+                return "View Details";
+        }
+    }
+    
+    private void handleViewAction(String tag, OnStepActionListener listener) {
+        if (tag == null) return;
+        
+        switch (tag.toLowerCase()) {
+            case "witnesses":
+                listener.onViewWitnesses(reportId);
+                break;
+            case "suspects":
+                listener.onViewSuspects(reportId);
+                break;
+            case "evidence":
+                listener.onViewEvidence(reportId);
+                break;
+            case "hearings":
+                listener.onViewHearings(reportId);
+                break;
+            case "resolution":
+                listener.onViewResolution(reportId);
+                break;
+        }
     }
     
     static class StepViewHolder extends RecyclerView.ViewHolder {

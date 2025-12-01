@@ -20,4 +20,10 @@ public interface ResolutionDao {
     
     @Delete
     void deleteResolution(Resolution resolution);
+    
+    @Query("SELECT COUNT(*) FROM resolutions WHERE blotterReportId = :reportId")
+    int getResolutionCountByReport(int reportId);
+    
+    @Query("SELECT * FROM resolutions WHERE blotterReportId = :reportId")
+    List<Resolution> getResolutionsByReport(int reportId);
 }

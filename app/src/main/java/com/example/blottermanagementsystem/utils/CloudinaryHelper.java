@@ -5,8 +5,8 @@ import android.net.Uri;
 import android.util.Log;
 
 import com.cloudinary.android.MediaManager;
-import com.cloudinary.android.callback.ErrorCallback;
 import com.cloudinary.android.callback.UploadCallback;
+import com.cloudinary.android.callback.ErrorInfo;
 
 import java.io.File;
 import java.util.HashMap;

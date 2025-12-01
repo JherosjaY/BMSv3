@@ -23,4 +23,10 @@ public interface SuspectDao {
     
     @Query("DELETE FROM suspects WHERE blotterReportId = :reportId")
     void deleteSuspectsByReportId(int reportId);
+    
+    @Query("SELECT COUNT(*) FROM suspects WHERE blotterReportId = :reportId")
+    int getSuspectCountByReport(int reportId);
+    
+    @Query("SELECT * FROM suspects WHERE blotterReportId = :reportId")
+    List<Suspect> getSuspectsByReport(int reportId);
 }

@@ -73,19 +73,12 @@ public class SplashActivity extends AppCompatActivity {
     }
     
     private void navigateToNextScreen() {
-        Intent intent;
+        // SYNCED WITH KOTLIN VERSION AND MAINACTIVITY
+        // All routing logic is now in MainActivity - SplashActivity just navigates there
+        // This ensures consistent flow: Onboarding → Permissions → Welcome → Dashboard
         
-        // Check if onboarding is completed
-        if (preferencesManager.isOnboardingCompleted()) {
-            // Returning user - go directly to MainActivity (Login/Register)
-            android.util.Log.d("SplashActivity", "✅ Onboarding completed - going to MainActivity");
-            intent = new Intent(this, MainActivity.class);
-        } else {
-            // First time user - show Onboarding
-            android.util.Log.d("SplashActivity", "🆕 First time user - showing Onboarding");
-            intent = new Intent(this, OnboardingActivity.class);
-        }
-        
+        android.util.Log.d("SplashActivity", "🎬 Splash complete - navigating to MainActivity for routing");
+        Intent intent = new Intent(this, MainActivity.class);
         startActivity(intent);
         finish();
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);

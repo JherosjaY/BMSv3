@@ -375,13 +375,14 @@
                         android:layout_marginTop="@dimen/spacing_medium"
                         android:hint="Accusation"
                         app:startIconDrawable="@android:drawable/ic_dialog_alert"
-                        app:startIconTint="@color/error_red">
+                        app:startIconTint="@color/error_red"
+                        app:endIconMode="dropdown_menu">
 
-                        <com.google.android.material.textfield.TextInputEditText
+                        <AutoCompleteTextView
                             android:id="@+id/etAccusation"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="textCapSentences|textMultiLine"
+                            android:inputType="textCapSentences"
                             android:minLines="2"
                             android:textColor="@color/text_primary" />
                     </com.google.android.material.textfield.TextInputLayout>

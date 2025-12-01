@@ -137,20 +137,20 @@
                         android:buttonTint="@color/electric_blue" />
 
                     <RadioButton
-                        android:id="@+id/radioAllAdmins"
+                        android:id="@+id/radioAllOfficers"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="👔 All Admins"
+                        android:text="👮 All Officers"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:padding="12dp"
                         android:buttonTint="@color/electric_blue" />
 
                     <RadioButton
-                        android:id="@+id/radioAllOfficers"
+                        android:id="@+id/radioSpecificOfficers"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="👮 All Officers"
+                        android:text="👮 Specific Officers"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp"
                         android:padding="12dp"

@@ -66,12 +66,25 @@ public class PermissionsSetupActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_permissions_setup);
         
+        android.util.Log.d("PermissionsSetupActivity", "✅ PermissionsSetupActivity.onCreate() - Screen is displaying!");
+        
         preferencesManager = new PreferencesManager(this);
         
         initViews();
         setupPermissionItems(); // FIX: Call this to set up permission icons/text
         setupListeners();
         animateShieldIcon(); // Only animate shield icon
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // If permissions are already granted, skip this screen
+        if (preferencesManager.isPermissionsGranted()) {
+            android.util.Log.d("PermissionsSetupActivity", "⚠️ Permissions already granted - skipping to WelcomeActivity");
+            startActivity(new Intent(this, com.example.blottermanagementsystem.ui.activities.WelcomeActivity.class));
+            finish();
+        }
     }
     
     private void animateShieldIcon() {
@@ -164,8 +177,9 @@ public class PermissionsSetupActivity extends BaseActivity {
     }
     
     private void proceedToLogin() {
+        android.util.Log.d("PermissionsSetupActivity", "✅ proceedToLogin() - Setting permissions_granted = true");
         preferencesManager.setPermissionsGranted(true);
-        android.util.Log.d("PermissionsSetup", "✅ Permissions granted - going to WelcomeActivity");
+        android.util.Log.d("PermissionsSetupActivity", "🔓 proceedToLogin() - Launching WelcomeActivity");
         
         // Go to WelcomeActivity (3-screen auth flow)
         Intent intent = new Intent(this, com.example.blottermanagementsystem.ui.activities.WelcomeActivity.class);

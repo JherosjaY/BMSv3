@@ -89,13 +89,29 @@ public class ViewAllReportsActivity extends BaseActivity {
             emptyStateIcon = findViewById(R.id.emptyStateIcon);
             emptyStateMessage = findViewById(R.id.emptyStateMessage);
             
+            // Scale empty state icon to be larger
+            if (emptyStateIcon != null) {
+                emptyStateIcon.setScaleX(1.5f);
+                emptyStateIcon.setScaleY(1.5f);
+            }
+            
             // Setup RecyclerView
             if (recyclerReports != null) {
                 adapter = new ReportAdapter(filteredReports, report -> {
                     try {
                         String userRole = preferencesManager.getUserRole();
-                        Class<?> targetActivity = "Officer".equalsIgnoreCase(userRole) ? 
-                            OfficerCaseDetailActivity.class : ReportDetailActivity.class;
+                        Class<?> targetActivity;
+                        
+                        if ("Admin".equalsIgnoreCase(userRole)) {
+                            // Admin goes to AdminCaseDetailActivity (Assign Officer)
+                            targetActivity = AdminCaseDetailActivity.class;
+                        } else if ("Officer".equalsIgnoreCase(userRole)) {
+                            // Officer goes to OfficerCaseDetailActivity (View Person History & Start Investigation)
+                            targetActivity = OfficerCaseDetailActivity.class;
+                        } else {
+                            // Regular User goes to ReportDetailActivity (Edit & Delete)
+                            targetActivity = ReportDetailActivity.class;
+                        }
                         
                         Intent intent = new Intent(this, targetActivity);
                         intent.putExtra("REPORT_ID", report.getId());
@@ -206,9 +222,7 @@ public class ViewAllReportsActivity extends BaseActivity {
             Intent intent = new Intent(this, activityClass);
             intent.putExtra("officer_filter", isOfficerFilter);
             
-            // Add loading animation
             startActivity(intent);
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
             finish();
         } catch (Exception e) {
             android.util.Log.e("ViewAllReports", "Error navigating to screen: " + e.getMessage());
@@ -216,16 +230,61 @@ public class ViewAllReportsActivity extends BaseActivity {
     }
     
     private void loadReports() {
-        // Check network connectivity
-        NetworkMonitor networkMonitor = new NetworkMonitor(this);
-        boolean isOnline = networkMonitor.isNetworkAvailable();
+        // Load from LOCAL DATABASE FIRST (fast) - don't wait for API
+        java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                BlotterDatabase db = BlotterDatabase.getDatabase(this);
+                List<BlotterReport> reports = db.blotterReportDao().getAllReports();
+                
+                runOnUiThread(() -> {
+                    filterReportsByUser(reports);
+                    updateStatistics();
+                    filterReports();
+                });
+            } catch (Exception e) {
+                android.util.Log.e("ViewAllReports", "Error loading from database: " + e.getMessage());
+            }
+        });
         
-        if (isOnline) {
-            // Load from API (online mode)
-            loadReportsFromApi();
-        } else {
-            // Load from local database (offline mode)
-            loadReportsFromDatabase();
+        // Sync with API in background (don't block UI)
+        NetworkMonitor networkMonitor = new NetworkMonitor(this);
+        if (networkMonitor.isNetworkAvailable()) {
+            java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
+                ApiClient.getAllReports(new ApiClient.ApiCallback<List<BlotterReport>>() {
+                    @Override
+                    public void onSuccess(List<BlotterReport> apiReports) {
+                        // Update local database silently
+                        java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
+                            try {
+                                BlotterDatabase db = BlotterDatabase.getDatabase(ViewAllReportsActivity.this);
+                                for (BlotterReport report : apiReports) {
+                                    BlotterReport existing = db.blotterReportDao().getReportById(report.getId());
+                                    if (existing == null) {
+                                        db.blotterReportDao().insertReport(report);
+                                    } else {
+                                        db.blotterReportDao().updateReport(report);
+                                    }
+                                }
+                                
+                                // Refresh UI with updated data
+                                runOnUiThread(() -> {
+                                    filterReportsByUser(apiReports);
+                                    updateStatistics();
+                                    filterReports();
+                                });
+                            } catch (Exception e) {
+                                android.util.Log.e("ViewAllReports", "Error syncing API data: " + e.getMessage());
+                            }
+                        });
+                    }
+                    
+                    @Override
+                    public void onError(String errorMessage) {
+                        android.util.Log.w("ViewAllReports", "API sync error: " + errorMessage);
+                        // Continue with local data - no need to show error
+                    }
+                });
+            });
         }
     }
     
@@ -360,6 +419,7 @@ public class ViewAllReportsActivity extends BaseActivity {
     private void filterReports() {
         filteredReports.clear();
         
+        // Show ALL statuses - no status filtering for All chip
         if (searchQuery.isEmpty()) {
             filteredReports.addAll(allReports);
         } else {
@@ -402,7 +462,8 @@ public class ViewAllReportsActivity extends BaseActivity {
         filteredReports.clear();
         
         for (BlotterReport report : allReports) {
-            if (status.equals(report.getStatus())) {
+            String reportStatus = report.getStatus() != null ? report.getStatus().toUpperCase().trim() : "";
+            if (status.toUpperCase().trim().equals(reportStatus)) {
                 filteredReports.add(report);
             }
         }

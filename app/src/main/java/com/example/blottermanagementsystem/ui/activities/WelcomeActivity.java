@@ -21,6 +21,31 @@ public class WelcomeActivity extends BaseActivity {
         animateCard();
     }
     
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // If user is already logged in, skip this screen and go to dashboard
+        com.example.blottermanagementsystem.utils.PreferencesManager preferencesManager = 
+            new com.example.blottermanagementsystem.utils.PreferencesManager(this);
+        
+        if (preferencesManager.isLoggedIn()) {
+            android.util.Log.d("WelcomeActivity", "⚠️ User already logged in - skipping to Dashboard");
+            String role = preferencesManager.getUserRole();
+            
+            Intent intent;
+            if ("Admin".equals(role)) {
+                intent = new Intent(this, com.example.blottermanagementsystem.ui.activities.AdminDashboardActivity.class);
+            } else if ("Officer".equals(role)) {
+                intent = new Intent(this, com.example.blottermanagementsystem.ui.activities.OfficerDashboardActivity.class);
+            } else {
+                intent = new Intent(this, com.example.blottermanagementsystem.ui.activities.UserDashboardActivity.class);
+            }
+            
+            startActivity(intent);
+            finish();
+        }
+    }
+    
     private void initViews() {
         btnSignIn = findViewById(R.id.btnSignIn);
         btnSignUp = findViewById(R.id.btnSignUp);

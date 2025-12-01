@@ -78,25 +78,43 @@ public class BlotterReportAdapter extends RecyclerView.Adapter<BlotterReportAdap
             SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
             tvDate.setText(dateFormat.format(new Date(report.getIncidentDate())));
             
-            // Set status color
+            // Set status color - Color coding for all statuses
             int statusColor;
             switch (report.getStatus()) {
                 case "Pending":
-                    statusColor = itemView.getContext().getColor(R.color.warning_yellow);
+                    // 🔵 Pending - Electric Blue
+                    statusColor = itemView.getContext().getColor(R.color.electric_blue);
+                    break;
+                case "Assigned":
+                    // 🔵 Assigned - Electric Blue
+                    statusColor = itemView.getContext().getColor(R.color.electric_blue);
                     break;
                 case "Ongoing":
                 case "Under Investigation":
-                    statusColor = itemView.getContext().getColor(R.color.info_blue);
+                    // 🟡 Ongoing - Yellow
+                    statusColor = itemView.getContext().getColor(R.color.warning_yellow);
                     break;
                 case "Resolved":
                 case "Closed":
+                    // 🟢 Resolved - Green
                     statusColor = itemView.getContext().getColor(R.color.success_green);
                     break;
                 default:
+                    // ⚪ Unknown - Gray
                     statusColor = itemView.getContext().getColor(R.color.text_secondary);
             }
             
-            tvStatus.setTextColor(statusColor);
+            // Set text color and background color for status badge
+            tvStatus.setTextColor(android.graphics.Color.WHITE);  // White text for all badges
+            
+            // Create colored background for status badge
+            android.graphics.drawable.GradientDrawable badgeBackground = new android.graphics.drawable.GradientDrawable();
+            badgeBackground.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+            badgeBackground.setColor(statusColor);
+            badgeBackground.setCornerRadius(8);
+            badgeBackground.setStroke(1, android.graphics.Color.argb(50, 255, 255, 255));
+            tvStatus.setBackground(badgeBackground);
+            
             if (statusIndicator != null) {
                 statusIndicator.setBackgroundColor(statusColor);
             }

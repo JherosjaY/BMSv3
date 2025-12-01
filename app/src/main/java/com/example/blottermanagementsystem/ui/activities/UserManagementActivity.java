@@ -3,6 +3,7 @@ package com.example.blottermanagementsystem.ui.activities;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
+import android.widget.TextView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -11,6 +12,7 @@ import com.example.blottermanagementsystem.data.database.BlotterDatabase;
 import com.example.blottermanagementsystem.data.entity.User;
 import com.example.blottermanagementsystem.ui.adapters.UserAdapter;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.chip.Chip;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -45,6 +47,11 @@ public class UserManagementActivity extends BaseActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle("User Management");
+        }
+        
+        // Handle back button click
+        if (toolbar != null) {
+            toolbar.setNavigationOnClickListener(v -> onBackPressed());
         }
     }
     
@@ -87,7 +94,13 @@ public class UserManagementActivity extends BaseActivity {
             try {
                 usersList.clear();
                 List<User> allUsers = database.userDao().getAllUsers();
-                usersList.addAll(allUsers);
+                
+                // Filter to show ONLY User role accounts (exclude Admin and Officer)
+                for (User user : allUsers) {
+                    if (user.getRole() != null && user.getRole().equalsIgnoreCase("USER")) {
+                        usersList.add(user);
+                    }
+                }
                 
                 runOnUiThread(() -> {
                     com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
@@ -131,7 +144,82 @@ public class UserManagementActivity extends BaseActivity {
     }
     
     private void showUserOptionsDialog(User user) {
-        Toast.makeText(this, "User: " + user.getFirstName(), Toast.LENGTH_SHORT).show();
+        // Create dialog with beautiful XML layout
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
+        
+        // Inflate XML layout directly
+        android.view.View dialogView = android.view.LayoutInflater.from(this).inflate(R.layout.dialog_user_details, null);
+        builder.setView(dialogView);
+        
+        // Get views from layout
+        TextView tvInitials = dialogView.findViewById(R.id.tvInitials);
+        TextView tvUserName = dialogView.findViewById(R.id.tvUserName);
+        Chip chipStatus = dialogView.findViewById(R.id.chipStatus);
+        TextView tvUsername = dialogView.findViewById(R.id.tvUsername);
+        TextView tvEmail = dialogView.findViewById(R.id.tvEmail);
+        TextView tvRole = dialogView.findViewById(R.id.tvRole);
+        TextView tvDateJoined = dialogView.findViewById(R.id.tvDateJoined);
+        com.google.android.material.button.MaterialButton btnTerminate = dialogView.findViewById(R.id.btnTerminate);
+        com.google.android.material.button.MaterialButton btnDelete = dialogView.findViewById(R.id.btnDelete);
+        com.google.android.material.button.MaterialButton btnClose = dialogView.findViewById(R.id.btnClose);
+        
+        // Populate data
+        String fullName = user.getFirstName() + " " + user.getLastName();
+        String initials = getInitials(user.getFirstName(), user.getLastName());
+        
+        tvInitials.setText(initials);
+        tvUserName.setText(fullName);
+        tvUsername.setText(user.getUsername());
+        tvEmail.setText(user.getEmail() != null && !user.getEmail().isEmpty() ? user.getEmail() : "No email");
+        tvRole.setText(user.getRole());
+        
+        // Format date joined
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault());
+        tvDateJoined.setText(sdf.format(new java.util.Date(user.getAccountCreated())));
+        
+        // Set status chip
+        if (user.isActive()) {
+            chipStatus.setText("Active");
+            chipStatus.setChipBackgroundColorResource(R.color.success_green);
+        } else {
+            chipStatus.setText("Inactive");
+            chipStatus.setChipBackgroundColorResource(R.color.error_red);
+        }
+        
+        // Create dialog
+        androidx.appcompat.app.AlertDialog dialog = builder.create();
+        
+        // Make dialog background transparent to show custom XML background
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+        
+        // Set button listeners
+        btnTerminate.setOnClickListener(v -> {
+            terminateUser(user);
+            dialog.dismiss();
+        });
+        
+        btnDelete.setOnClickListener(v -> {
+            confirmDeleteUser(user);
+            dialog.dismiss();
+        });
+        
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+        
+        // Show dialog
+        dialog.show();
+    }
+    
+    private String getInitials(String firstName, String lastName) {
+        String initials = "";
+        if (firstName != null && !firstName.isEmpty()) {
+            initials += firstName.charAt(0);
+        }
+        if (lastName != null && !lastName.isEmpty()) {
+            initials += lastName.charAt(0);
+        }
+        return initials.toUpperCase();
     }
     
     private void terminateUser(User user) {

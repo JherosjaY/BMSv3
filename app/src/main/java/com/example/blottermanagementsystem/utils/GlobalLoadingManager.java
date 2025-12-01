@@ -70,41 +70,15 @@ public class GlobalLoadingManager {
             loadingDialog.show();
             isShowing = true;
             
-            // Start animated hourglass with multiple fallback levels
-            ImageView hourglassView = loadingView.findViewById(R.id.ivLoadingSpinner);
-            if (hourglassView != null) {
-                boolean animationStarted = false;
-                
-                // Level 1: Try AnimatedVectorDrawable
-                try {
-                    android.graphics.drawable.AnimatedVectorDrawable drawable = 
-                        (android.graphics.drawable.AnimatedVectorDrawable) context.getDrawable(R.drawable.hourglass_animated_real);
-                    
-                    if (drawable != null) {
-                        hourglassView.setImageDrawable(drawable);
-                        drawable.start();
-                        animationStarted = true;
-                        // Animation started successfully
-                    }
-                } catch (Exception e) {
-                    android.util.Log.w("GlobalLoading", "⚠️ Level 1 failed: " + e.getMessage());
+            // Show ProgressBar spinner
+            try {
+                ProgressBar progressBar = loadingView.findViewById(R.id.progressBar);
+                if (progressBar != null) {
+                    progressBar.setVisibility(View.VISIBLE);
+                    // ProgressBar animation starts automatically
                 }
-                
-                // Level 2: Ultimate fallback - system progress bar
-                if (!animationStarted) {
-                    try {
-                        hourglassView.setVisibility(View.GONE);
-                        ProgressBar fallbackProgress = loadingView.findViewById(R.id.progressBar);
-                        if (fallbackProgress != null) {
-                            fallbackProgress.setVisibility(View.VISIBLE);
-                            // Using system progress bar fallback
-                        }
-                    } catch (Exception e) {
-                        android.util.Log.e("GlobalLoading", "❌ All levels failed: " + e.getMessage());
-                    }
-                }
-            } else {
-                android.util.Log.e("GlobalLoading", "❌ ImageView not found in layout!");
+            } catch (Exception e) {
+                android.util.Log.e("GlobalLoading", "❌ Error showing progress bar: " + e.getMessage());
             }
             
             // Smart timeout system - Progressive messages

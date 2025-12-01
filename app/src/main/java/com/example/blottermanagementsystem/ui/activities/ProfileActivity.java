@@ -346,8 +346,8 @@ public class ProfileActivity extends BaseActivity {
             // Clear app session
             preferencesManager.clearSession();
             
-            // Navigate to welcome screen
-            Intent intent = new Intent(this, WelcomeActivity.class);
+            // Navigate to login screen (not welcome screen)
+            Intent intent = new Intent(this, LoginActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
             finish();
@@ -424,8 +424,8 @@ public class ProfileActivity extends BaseActivity {
                     // Clear session
                     preferencesManager.clearSession();
                     
-                    // Navigate to login
-                    Intent intent = new Intent(this, WelcomeActivity.class);
+                    // Navigate to login (not welcome screen)
+                    Intent intent = new Intent(this, LoginActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                     finish();

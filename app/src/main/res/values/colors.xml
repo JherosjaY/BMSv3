@@ -54,6 +54,8 @@
     <color name="background_secondary">#1e293b</color>    <!-- Lighter - Body background -->
     <color name="card_background">#0f172a</color>         <!-- CardView background (primary) -->
     <color name="body_background">#1e293b</color>         <!-- Screen body background (secondary) -->
+    <color name="dialog_background">#1a2332</color>       <!-- Dialog background - slightly lighter than card -->
+    <color name="dialog_surface">#243447</color>          <!-- Dialog surface - for better contrast -->
 
     <!-- Text Colors -->
     <color name="text_primary">#ffffff</color>
@@ -84,4 +86,7 @@
     <!-- Accent Colors -->
     <color name="accent_purple">#a78bfa</color>     <!-- Vibrant Purple/Violet for UI accents -->
     <color name="accent_purple_dark">#8b5cf6</color> <!-- Darker Purple for hover states -->
+    
+    <!-- Dark Surface for Dialogs -->
+    <color name="dark_surface">#1a2332</color>      <!-- Dark surface for dialog backgrounds -->
 </resources>

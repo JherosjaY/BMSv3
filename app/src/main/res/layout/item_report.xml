@@ -56,7 +56,7 @@
                 android:layout_height="wrap_content"
                 android:text="Pending"
                 android:textColor="@color/white"
-                app:chipBackgroundColor="@color/warning_yellow"
+                app:chipBackgroundColor="@color/electric_blue"
                 app:chipMinHeight="28dp" />
         </LinearLayout>
 

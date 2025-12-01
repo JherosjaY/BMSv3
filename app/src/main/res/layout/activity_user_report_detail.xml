@@ -87,6 +87,36 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <!-- Investigation Timeline Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_large"
+                android:layout_marginBottom="@dimen/spacing_medium"
+                android:text="📊 Investigation Timeline"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/spacing_medium"
+                android:maxHeight="400dp"
+                app:cardBackgroundColor="@color/card_background"
+                app:cardCornerRadius="@dimen/card_corner_radius"
+                app:cardElevation="@dimen/card_elevation">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvInvestigationSteps"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="@dimen/spacing_medium"
+                    android:scrollbars="vertical"
+                    android:scrollbarStyle="insideInset"
+                    android:nestedScrollingEnabled="true" />
+            </androidx.cardview.widget.CardView>
+
             <!-- Assigned Officers Card - USER ROLE ONLY -->
             <androidx.cardview.widget.CardView
                 android:id="@+id/cardAssignedOfficers"
@@ -589,11 +619,27 @@
                     android:clipToPadding="false" />
             </androidx.cardview.widget.CardView>
 
+            <!-- PDF Export Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExportPdf"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/button_height"
+                android:layout_marginTop="@dimen/spacing_large"
+                android:layout_marginBottom="@dimen/spacing_small"
+                android:text="Export as PDF"
+                android:textColor="@color/white"
+                app:backgroundTint="@color/electric_blue"
+                app:cornerRadius="8dp"
+                app:icon="@android:drawable/ic_menu_save"
+                app:iconGravity="textStart"
+                app:iconTint="@color/white" />
+
             <!-- Edit and Delete Buttons -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_large"
+                android:layout_marginTop="@dimen/spacing_small"
                 android:orientation="horizontal">
 
                 <com.google.android.material.button.MaterialButton

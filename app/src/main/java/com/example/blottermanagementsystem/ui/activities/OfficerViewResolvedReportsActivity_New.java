@@ -68,6 +68,11 @@ public class OfficerViewResolvedReportsActivity_New extends BaseActivity {
             setupRecyclerView();
             android.util.Log.d("OfficerResolved", "✅ RecyclerView setup");
             
+            // CLEAR all data before loading
+            allReports.clear();
+            filteredReports.clear();
+            android.util.Log.d("OfficerResolved", "✅ Data cleared");
+            
             // Get officer ID on background thread
             int userId = preferencesManager.getUserId();
             android.util.Log.d("OfficerResolved", "✅ User ID: " + userId);
@@ -77,6 +82,9 @@ public class OfficerViewResolvedReportsActivity_New extends BaseActivity {
                     if (officer != null) {
                         officerId = officer.getId();
                         android.util.Log.d("OfficerResolved", "✅ Officer ID: " + officerId);
+                        
+                        // IMMEDIATELY load statistics from database (before UI loads)
+                        loadStatisticsFromDatabase();
                     } else {
                         android.util.Log.e("OfficerResolved", "❌ Officer is null!");
                     }
@@ -175,10 +183,11 @@ public class OfficerViewResolvedReportsActivity_New extends BaseActivity {
             btnSort.setOnClickListener(v -> showSortDialog());
         }
         
-        // Chip listeners - navigate to other activities
+        // Chip listeners with animations - navigate to other activities
         if (chipAll != null) {
             chipAll.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isChecked) {
+                    animateChip(chipAll);
                     updateEmptyStateIcon("ALL");
                     loadAllReports();
                 }
@@ -188,6 +197,7 @@ public class OfficerViewResolvedReportsActivity_New extends BaseActivity {
         if (chipPending != null) {
             chipPending.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isChecked) {
+                    animateChip(chipPending);
                     updateEmptyStateIcon("ASSIGNED");
                     navigateToScreen(OfficerViewAssignedReportsActivity_New.class);
                 }
@@ -197,6 +207,7 @@ public class OfficerViewResolvedReportsActivity_New extends BaseActivity {
         if (chipOngoing != null) {
             chipOngoing.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isChecked) {
+                    animateChip(chipOngoing);
                     updateEmptyStateIcon("ONGOING");
                     navigateToScreen(OfficerViewOngoingReportsActivity_New.class);
                 }
@@ -206,6 +217,7 @@ public class OfficerViewResolvedReportsActivity_New extends BaseActivity {
         if (chipResolved != null) {
             chipResolved.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isChecked) {
+                    animateChip(chipResolved);
                     updateEmptyStateIcon("RESOLVED");
                     // Already on resolved screen, just refresh
                     loadReports();
@@ -216,7 +228,17 @@ public class OfficerViewResolvedReportsActivity_New extends BaseActivity {
     
     private void navigateToScreen(Class<?> activityClass) {
         Intent intent = new Intent(this, activityClass);
-        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        
+        // Pass the selected chip type to the new activity
+        if (activityClass == OfficerViewAllReportsActivity_New.class) {
+            intent.putExtra("SELECTED_CHIP", "ALL");
+        } else if (activityClass == OfficerViewAssignedReportsActivity_New.class) {
+            intent.putExtra("SELECTED_CHIP", "ASSIGNED");
+        } else if (activityClass == OfficerViewOngoingReportsActivity_New.class) {
+            intent.putExtra("SELECTED_CHIP", "ONGOING");
+        }
+        
         startActivity(intent);
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         finish();
@@ -256,10 +278,40 @@ public class OfficerViewResolvedReportsActivity_New extends BaseActivity {
                                 db.blotterReportDao().updateReport(report);
                             }
                         }
+                        // Calculate statistics from API reports
+                        int total = 0, assigned = 0, ongoing = 0, resolved = 0;
+                        for (BlotterReport report : apiReports) {
+                            boolean isAssignedToOfficer = false;
+                            if (report.getAssignedOfficerId() != null && report.getAssignedOfficerId().intValue() == officerId) {
+                                isAssignedToOfficer = true;
+                            }
+                            if (!isAssignedToOfficer && report.getAssignedOfficerIds() != null && !report.getAssignedOfficerIds().isEmpty()) {
+                                String[] officerIds = report.getAssignedOfficerIds().split(",");
+                                for (String id : officerIds) {
+                                    try {
+                                        if (Integer.parseInt(id.trim()) == officerId) {
+                                            isAssignedToOfficer = true;
+                                            break;
+                                        }
+                                    } catch (NumberFormatException e) {
+                                        // Ignore
+                                    }
+                                }
+                            }
+                            if (isAssignedToOfficer) {
+                                total++;
+                                if ("PENDING".equalsIgnoreCase(report.getStatus())) assigned++;
+                                if ("ONGOING".equalsIgnoreCase(report.getStatus())) ongoing++;
+                                if ("RESOLVED".equalsIgnoreCase(report.getStatus())) resolved++;
+                            }
+                        }
+                        
+                        final int finalTotal = total, finalAssigned = assigned, finalOngoing = ongoing, finalResolved = resolved;
+                        
                         runOnUiThread(() -> {
                             allReports.clear();
                             allReports.addAll(apiReports);
-                            updateStatistics();
+                            updateStatisticsUI(finalTotal, finalAssigned, finalOngoing, finalResolved);
                             filterReports();
                         });
                     } catch (Exception e) {
@@ -282,10 +334,68 @@ public class OfficerViewResolvedReportsActivity_New extends BaseActivity {
             try {
                 BlotterDatabase database = BlotterDatabase.getDatabase(this);
                 List<BlotterReport> reports = database.blotterReportDao().getAllReports();
+                
+                // Calculate statistics on background thread before updating UI
+                int total = 0, assigned = 0, ongoing = 0, resolved = 0;
+                for (BlotterReport report : reports) {
+                    boolean isAssignedToOfficer = false;
+                    if (report.getAssignedOfficerId() != null && report.getAssignedOfficerId().intValue() == officerId) {
+                        isAssignedToOfficer = true;
+                    }
+                    if (!isAssignedToOfficer && report.getAssignedOfficerIds() != null && !report.getAssignedOfficerIds().isEmpty()) {
+                        String[] officerIds = report.getAssignedOfficerIds().split(",");
+                        for (String id : officerIds) {
+                            try {
+                                if (Integer.parseInt(id.trim()) == officerId) {
+                                    isAssignedToOfficer = true;
+                                    break;
+                                }
+                            } catch (NumberFormatException e) {
+                                // Ignore
+                            }
+                        }
+                    }
+                    
+                    if (isAssignedToOfficer) {
+                        total++;
+                        if ("PENDING".equalsIgnoreCase(report.getStatus())) assigned++;
+                        if ("ONGOING".equalsIgnoreCase(report.getStatus())) ongoing++;
+                        if ("RESOLVED".equalsIgnoreCase(report.getStatus())) resolved++;
+                    }
+                }
+                
+                final int finalTotal = total, finalAssigned = assigned, finalOngoing = ongoing, finalResolved = resolved;
+                
+                // Filter reports assigned to this officer AND with RESOLVED/CLOSED status
+                List<BlotterReport> officerReports = new ArrayList<>();
+                for (BlotterReport report : reports) {
+                    boolean isAssignedToOfficer = false;
+                    if (report.getAssignedOfficerId() != null && report.getAssignedOfficerId().intValue() == officerId) {
+                        isAssignedToOfficer = true;
+                    }
+                    if (!isAssignedToOfficer && report.getAssignedOfficerIds() != null && !report.getAssignedOfficerIds().isEmpty()) {
+                        String[] officerIds = report.getAssignedOfficerIds().split(",");
+                        for (String id : officerIds) {
+                            try {
+                                if (Integer.parseInt(id.trim()) == officerId) {
+                                    isAssignedToOfficer = true;
+                                    break;
+                                }
+                            } catch (NumberFormatException e) {
+                                // Ignore
+                            }
+                        }
+                    }
+                    
+                    if (isAssignedToOfficer) {
+                        officerReports.add(report);
+                    }
+                }
+                
                 runOnUiThread(() -> {
                     allReports.clear();
-                    allReports.addAll(reports);
-                    updateStatistics();
+                    allReports.addAll(officerReports);
+                    updateStatisticsUI(finalTotal, finalAssigned, finalOngoing, finalResolved);
                     filterReports();
                 });
             } catch (Exception e) {
@@ -338,74 +448,75 @@ public class OfficerViewResolvedReportsActivity_New extends BaseActivity {
         });
     }
     
-    private void updateStatistics() {
-        BlotterDatabase database = BlotterDatabase.getDatabase(this);
-        List<BlotterReport> allSystemReports = database.blotterReportDao().getAllReports();
+    private void updateStatisticsUI(int total, int assigned, int ongoing, int resolved) {
+        // Update UI on main thread (already called from UI thread)
+        android.util.Log.d("OfficerResolved", "✅ Statistics: Total=" + total + ", Assigned=" + assigned + ", Ongoing=" + ongoing + ", Resolved=" + resolved);
         
-        int total = 0, assigned = 0, ongoing = 0, resolved = 0;
-        
-        for (BlotterReport report : allSystemReports) {
-            // Check if officer is assigned (either single or multiple officers)
-            boolean isAssignedToOfficer = false;
-            
-            // Check single officer assignment
-            if (report.getAssignedOfficerId() != null && report.getAssignedOfficerId().intValue() == officerId) {
-                isAssignedToOfficer = true;
-            }
-            
-            // Check multiple officers assignment
-            if (!isAssignedToOfficer && report.getAssignedOfficerIds() != null && !report.getAssignedOfficerIds().isEmpty()) {
-                String[] officerIds = report.getAssignedOfficerIds().split(",");
-                for (String id : officerIds) {
-                    try {
-                        if (Integer.parseInt(id.trim()) == officerId) {
-                            isAssignedToOfficer = true;
-                            break;
-                        }
-                    } catch (NumberFormatException e) {
-                        // Ignore invalid IDs
-                    }
-                }
-            }
-            
-            if (isAssignedToOfficer) {
-                total++;
-                String status = report.getStatus() != null ? report.getStatus().toUpperCase() : "";
-                if ("ASSIGNED".equals(status)) {
-                    assigned++;
-                } else if ("ONGOING".equals(status) || "IN PROGRESS".equals(status)) {
-                    ongoing++;
-                } else if ("RESOLVED".equals(status)) {
-                    resolved++;
-                }
-            }
+        if (tvTotalCount != null) {
+            tvTotalCount.setText(String.valueOf(total));
+            android.util.Log.d("OfficerResolved", "✅ tvTotalCount updated: " + total);
         }
-        
-        // Make variables final for lambda
-        final int finalTotal = total;
-        final int finalAssigned = assigned;
-        final int finalOngoing = ongoing;
-        final int finalResolved = resolved;
-        
-        // Update UI on main thread
-        runOnUiThread(() -> {
-            if (tvTotalCount != null) tvTotalCount.setText(String.valueOf(finalTotal));
-            if (tvPendingCount != null) tvPendingCount.setText(String.valueOf(finalAssigned));
-            if (tvOngoingCount != null) tvOngoingCount.setText(String.valueOf(finalOngoing));
-            if (tvResolvedCount != null) tvResolvedCount.setText(String.valueOf(finalResolved));
-        });
+        if (tvPendingCount != null) {
+            tvPendingCount.setText(String.valueOf(assigned));
+            android.util.Log.d("OfficerResolved", "✅ tvPendingCount updated: " + assigned);
+        }
+        if (tvOngoingCount != null) {
+            tvOngoingCount.setText(String.valueOf(ongoing));
+            android.util.Log.d("OfficerResolved", "✅ tvOngoingCount updated: " + ongoing);
+        }
+        if (tvResolvedCount != null) {
+            tvResolvedCount.setText(String.valueOf(resolved));
+            android.util.Log.d("OfficerResolved", "✅ tvResolvedCount updated: " + resolved);
+        }
     }
     
     private void filterReports() {
         filteredReports.clear();
         
+        // Determine which chip is currently checked to apply correct filter
+        String currentFilter = "RESOLVED"; // Default to RESOLVED for this activity
+        
+        if (chipAll != null && chipAll.isChecked()) {
+            currentFilter = "ALL";
+        } else if (chipPending != null && chipPending.isChecked()) {
+            currentFilter = "ASSIGNED";
+        } else if (chipOngoing != null && chipOngoing.isChecked()) {
+            currentFilter = "ONGOING";
+        } else if (chipResolved != null && chipResolved.isChecked()) {
+            currentFilter = "RESOLVED";
+        }
+        
+        android.util.Log.d("OfficerResolved", "🔍 FILTER: Current chip filter: " + currentFilter + " | Total reports: " + allReports.size());
+        
         for (BlotterReport report : allReports) {
-            if (searchQuery.isEmpty() || 
+            String status = report.getStatus() != null ? report.getStatus().toUpperCase().trim() : "";
+            
+            // Apply status filter based on which chip is checked
+            boolean matchesStatusFilter = false;
+            
+            if ("ALL".equals(currentFilter)) {
+                matchesStatusFilter = true; // Show all statuses
+            } else if ("ASSIGNED".equals(currentFilter)) {
+                matchesStatusFilter = "ASSIGNED".equals(status);
+            } else if ("ONGOING".equals(currentFilter)) {
+                matchesStatusFilter = "ONGOING".equals(status) || "IN PROGRESS".equals(status);
+            } else if ("RESOLVED".equals(currentFilter)) {
+                matchesStatusFilter = "RESOLVED".equals(status) || "CLOSED".equals(status);
+            }
+            
+            // Apply search filter
+            boolean matchesSearch = searchQuery.isEmpty() || 
                 (report.getCaseNumber() != null && report.getCaseNumber().toLowerCase().contains(searchQuery)) ||
-                (report.getIncidentType() != null && report.getIncidentType().toLowerCase().contains(searchQuery))) {
+                (report.getIncidentType() != null && report.getIncidentType().toLowerCase().contains(searchQuery));
+            
+            // Add if both filters match
+            if (matchesStatusFilter && matchesSearch) {
                 filteredReports.add(report);
+                android.util.Log.d("OfficerResolved", "  ✅ ADDED: " + report.getCaseNumber() + " | Status: " + status);
             }
         }
+        
+        android.util.Log.d("OfficerResolved", "✅ FILTER COMPLETE: " + filteredReports.size() + " cases");
         
         sortReports();
         
@@ -496,6 +607,75 @@ public class OfficerViewResolvedReportsActivity_New extends BaseActivity {
         if (refreshTimer != null) {
             refreshTimer.cancel();
             refreshTimer = null;
+        }
+    }
+    
+    private void animateChip(com.google.android.material.chip.Chip chip) {
+        // Scale up animation when chip is selected
+        android.view.animation.Animation scaleUp = android.view.animation.AnimationUtils.loadAnimation(this, R.anim.chip_scale_up);
+        chip.startAnimation(scaleUp);
+    }
+    
+    private void loadStatisticsFromDatabase() {
+        // Load statistics IMMEDIATELY from local database (no API calls)
+        try {
+            BlotterDatabase database = BlotterDatabase.getDatabase(this);
+            List<BlotterReport> allSystemReports = database.blotterReportDao().getAllReports();
+            
+            android.util.Log.d("OfficerResolved", "📊 IMMEDIATE: Loading statistics from database (" + allSystemReports.size() + " total reports)");
+            
+            int total = 0, assigned = 0, ongoing = 0, resolved = 0;
+            
+            for (BlotterReport report : allSystemReports) {
+                boolean isAssignedToOfficer = false;
+                
+                if (report.getAssignedOfficerId() != null && report.getAssignedOfficerId().intValue() == officerId) {
+                    isAssignedToOfficer = true;
+                }
+                
+                if (!isAssignedToOfficer && report.getAssignedOfficerIds() != null && !report.getAssignedOfficerIds().isEmpty()) {
+                    String[] officerIds = report.getAssignedOfficerIds().split(",");
+                    for (String id : officerIds) {
+                        try {
+                            if (Integer.parseInt(id.trim()) == officerId) {
+                                isAssignedToOfficer = true;
+                                break;
+                            }
+                        } catch (NumberFormatException e) {
+                            // Ignore
+                        }
+                    }
+                }
+                
+                if (isAssignedToOfficer) {
+                    total++;
+                    String status = report.getStatus() != null ? report.getStatus().toUpperCase().trim() : "";
+                    
+                    if ("ASSIGNED".equals(status)) {
+                        assigned++;
+                    } else if ("ONGOING".equals(status) || "IN PROGRESS".equals(status)) {
+                        ongoing++;
+                    } else if ("RESOLVED".equals(status) || "CLOSED".equals(status)) {
+                        resolved++;
+                    }
+                }
+            }
+            
+            final int finalTotal = total;
+            final int finalAssigned = assigned;
+            final int finalOngoing = ongoing;
+            final int finalResolved = resolved;
+            
+            runOnUiThread(() -> {
+                android.util.Log.d("OfficerResolved", "✅ IMMEDIATE UPDATE: Total=" + finalTotal + ", Assigned=" + finalAssigned + ", Ongoing=" + finalOngoing + ", Resolved=" + finalResolved);
+                
+                if (tvTotalCount != null) tvTotalCount.setText(String.valueOf(finalTotal));
+                if (tvPendingCount != null) tvPendingCount.setText(String.valueOf(finalAssigned));
+                if (tvOngoingCount != null) tvOngoingCount.setText(String.valueOf(finalOngoing));
+                if (tvResolvedCount != null) tvResolvedCount.setText(String.valueOf(finalResolved));
+            });
+        } catch (Exception e) {
+            android.util.Log.e("OfficerResolved", "❌ Error loading statistics: " + e.getMessage(), e);
         }
     }
 }

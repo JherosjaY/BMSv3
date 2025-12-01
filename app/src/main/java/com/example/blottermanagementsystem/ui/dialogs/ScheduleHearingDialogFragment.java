@@ -31,7 +31,7 @@ import java.util.concurrent.Executors;
 public class ScheduleHearingDialogFragment extends DialogFragment {
 
     private EditText etDate, etTime, etLocation, etPurpose, etPresidingOfficer, etNotes;
-    private MaterialButton btnSave;
+    private MaterialButton btnSave, btnSkip;
     private int reportId;
     private OnHearingSavedListener listener;
     private Calendar selectedDate;
@@ -52,11 +52,24 @@ public class ScheduleHearingDialogFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Dialog);
+        // Use transparent background to show the MaterialCardView properly
+        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Dialog_MinWidth);
         if (getArguments() != null) {
             reportId = getArguments().getInt("report_id");
         }
-        selectedDate = Calendar.getInstance();
+    }
+    
+    @Override
+    public void onStart() {
+        super.onStart();
+        // Make dialog background transparent to show MaterialCardView
+        if (getDialog() != null && getDialog().getWindow() != null) {
+            getDialog().getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            // Set dialog to match parent width with padding
+            android.view.WindowManager.LayoutParams params = getDialog().getWindow().getAttributes();
+            params.width = (int) (getResources().getDisplayMetrics().widthPixels * 0.9);
+            getDialog().getWindow().setAttributes(params);
+        }
     }
 
     @Nullable
@@ -68,24 +81,62 @@ public class ScheduleHearingDialogFragment extends DialogFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        initViews(view);
+        setupUI(view);
         setupListeners();
     }
 
-    private void initViews(View view) {
+    private void setupUI(View view) {
+        // Initialize calendar FIRST before anything else
+        selectedDate = Calendar.getInstance();
+        
+        etLocation = view.findViewById(R.id.etHearingLocation);
         etDate = view.findViewById(R.id.etHearingDate);
         etTime = view.findViewById(R.id.etHearingTime);
-        etLocation = view.findViewById(R.id.etHearingLocation);
         etPurpose = view.findViewById(R.id.etHearingPurpose);
-        etPresidingOfficer = view.findViewById(R.id.etPresidingOfficer);
-        etNotes = view.findViewById(R.id.etHearingNotes);
         btnSave = view.findViewById(R.id.btnScheduleHearing);
+        btnSkip = view.findViewById(R.id.btnSkipHearing);
     }
 
     private void setupListeners() {
         etDate.setOnClickListener(v -> showDatePicker());
         etTime.setOnClickListener(v -> showTimePicker());
-        btnSave.setOnClickListener(v -> saveHearing());
+        btnSkip.setOnClickListener(v -> skipHearing()); // ✅ SKIP button for testing
+    }
+    
+    private void skipHearing() {
+        // ✅ SKIP: Create dummy hearing and mark as completed (for testing flow)
+        Hearing hearing = new Hearing();
+        hearing.setBlotterReportId(reportId);
+        hearing.setHearingDate("🧪 Test Date");
+        hearing.setHearingTime("10:00 AM");
+        hearing.setLocation("Test Location");
+        hearing.setPurpose("Skipped for testing");
+        hearing.setStatus("Scheduled");
+        hearing.setCreatedAt(System.currentTimeMillis());
+        
+        // Save to database in background thread
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                BlotterDatabase database = BlotterDatabase.getDatabase(getContext());
+                if (database != null) {
+                    long id = database.hearingDao().insertHearing(hearing);
+                    hearing.setId((int) id);
+                    
+                    // Notify on main thread
+                    getActivity().runOnUiThread(() -> {
+                        if (listener != null) {
+                            listener.onHearingSaved(hearing);
+                        }
+                        Toast.makeText(getContext(), "⏭️ Hearing skipped (test mode)", Toast.LENGTH_SHORT).show();
+                        dismiss();
+                    });
+                }
+            } catch (Exception e) {
+                getActivity().runOnUiThread(() -> {
+                    Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     private void showDatePicker() {

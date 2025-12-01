@@ -223,7 +223,7 @@ public class AdminProfileActivity extends BaseActivity {
     
     private void performLogout() {
         preferencesManager.logout();
-        Intent intent = new Intent(this, WelcomeActivity.class);
+        Intent intent = new Intent(this, LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
@@ -270,7 +270,7 @@ public class AdminProfileActivity extends BaseActivity {
             
             runOnUiThread(() -> {
                 preferencesManager.logout();
-                Intent intent = new Intent(this, WelcomeActivity.class);
+                Intent intent = new Intent(this, LoginActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
                 finish();

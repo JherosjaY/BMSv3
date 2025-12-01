@@ -3,16 +3,18 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="8dp"
-    app:cardBackgroundColor="@color/card_background">
+    app:cardCornerRadius="20dp"
+    app:cardElevation="12dp"
+    app:cardBackgroundColor="@color/dialog_background"
+    app:strokeColor="@color/electric_blue"
+    app:strokeWidth="2dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@color/card_background"
-        android:padding="24dp">
+        android:background="@drawable/dialog_rounded_corners"
+        android:padding="28dp">
 
         <!-- Title -->
         <TextView
@@ -63,17 +65,39 @@
             android:textColorHint="@color/text_secondary" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnSaveResolution"
+    <!-- Button Container -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:text="Save Resolution"
-        android:textColor="@color/white"
-        android:textSize="16sp"
-        app:backgroundTint="@color/success_green"
-        app:cornerRadius="12dp"
-        app:icon="@drawable/ic_resolution"
-        app:iconGravity="textStart"
-        app:iconTint="@color/white" />
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:spacing="8dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSaveResolution"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:text="Save"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            app:backgroundTint="@color/electric_blue"
+            app:cornerRadius="12dp"
+            app:icon="@drawable/ic_resolution"
+            app:iconGravity="textStart"
+            app:iconTint="@color/white" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSkipResolution"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="⏭️ Skip"
+            android:textColor="@color/electric_blue"
+            android:textSize="16sp"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            app:strokeColor="@color/electric_blue"
+            app:cornerRadius="12dp" />
+    </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
