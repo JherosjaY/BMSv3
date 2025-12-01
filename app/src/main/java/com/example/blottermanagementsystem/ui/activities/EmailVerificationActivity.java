@@ -281,10 +281,32 @@ public class EmailVerificationActivity extends AppCompatActivity {
         // Show loading
         showLoading(true);
 
-        // Simulate verification delay (in production, this would be an API call)
-        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-            if (enteredCode.equals(verificationCode)) {
-                // ✅ Code is correct
+        // Call backend API to verify code
+        callVerifyEmailAPI(enteredCode);
+    }
+
+    private void callVerifyEmailAPI(String code) {
+        // TODO: Replace with actual backend URL
+        String backendUrl = "http://your-backend-url.com/api/email/verify-email-code";
+        
+        try {
+            java.net.URL url = new java.net.URL(backendUrl);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+
+            // Create request body
+            String jsonBody = "{\"email\":\"" + userEmail + "\",\"code\":\"" + code + "\"}";
+            
+            try (java.io.OutputStream os = conn.getOutputStream()) {
+                byte[] input = jsonBody.getBytes("utf-8");
+                os.write(input, 0, input.length);
+            }
+
+            int responseCode = conn.getResponseCode();
+            
+            if (responseCode == 200) {
                 showLoading(false);
                 Toast.makeText(this, "Email verified successfully!", Toast.LENGTH_SHORT).show();
                 
@@ -297,12 +319,17 @@ public class EmailVerificationActivity extends AppCompatActivity {
                     }
                 }, 1500);
             } else {
-                // ❌ Code is incorrect
                 showLoading(false);
                 Toast.makeText(this, "Invalid verification code. Please try again.", Toast.LENGTH_SHORT).show();
                 clearAllFields();
             }
-        }, 1000);
+            
+            conn.disconnect();
+        } catch (Exception e) {
+            showLoading(false);
+            Toast.makeText(this, "Error verifying code: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            android.util.Log.e("EmailVerification", "API Error", e);
+        }
     }
 
     private void autoLogin() {
@@ -332,15 +359,46 @@ public class EmailVerificationActivity extends AppCompatActivity {
 
     private void resendCode() {
         if (!timerRunning) {
-            Toast.makeText(this, "Verification code resent to " + userEmail, Toast.LENGTH_SHORT).show();
-            clearAllFields();
-            startTimer();
-            
-            // TODO: In production, call backend API to resend code
-            // API: POST /api/auth/resend-verification-code
-            // Body: { email: userEmail }
+            // Call backend API to resend code
+            callResendCodeAPI();
         } else {
             Toast.makeText(this, "Please wait before requesting a new code", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void callResendCodeAPI() {
+        // TODO: Replace with actual backend URL
+        String backendUrl = "http://your-backend-url.com/api/email/resend-verification-code";
+        
+        try {
+            java.net.URL url = new java.net.URL(backendUrl);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+
+            // Create request body
+            String jsonBody = "{\"email\":\"" + userEmail + "\"}";
+            
+            try (java.io.OutputStream os = conn.getOutputStream()) {
+                byte[] input = jsonBody.getBytes("utf-8");
+                os.write(input, 0, input.length);
+            }
+
+            int responseCode = conn.getResponseCode();
+            
+            if (responseCode == 200) {
+                Toast.makeText(this, "Verification code resent to " + userEmail, Toast.LENGTH_SHORT).show();
+                clearAllFields();
+                startTimer();
+            } else {
+                Toast.makeText(this, "Failed to resend code. Please try again.", Toast.LENGTH_SHORT).show();
+            }
+            
+            conn.disconnect();
+        } catch (Exception e) {
+            Toast.makeText(this, "Error resending code: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            android.util.Log.e("EmailVerification", "Resend API Error", e);
         }
     }
 
