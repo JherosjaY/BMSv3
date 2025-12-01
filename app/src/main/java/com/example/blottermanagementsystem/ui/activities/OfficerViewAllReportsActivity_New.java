@@ -164,6 +164,7 @@ public class OfficerViewAllReportsActivity_New extends BaseActivity {
                 if (isChecked) {
                     animateChip(chipAll);
                     updateEmptyStateIcon("ALL");
+                    // Already on ALL screen, filter lang
                     filterReports();
                 }
             });
@@ -174,7 +175,13 @@ public class OfficerViewAllReportsActivity_New extends BaseActivity {
                 if (isChecked) {
                     animateChip(chipPending);
                     updateEmptyStateIcon("ASSIGNED");
-                    filterReports();
+                    // Navigate to ASSIGNED activity
+                    Intent intent = new Intent(this, OfficerViewAssignedReportsActivity_New.class);
+                    intent.putExtra("SELECTED_CHIP", "ASSIGNED");
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+                    finish();
                 }
             });
         }
@@ -184,7 +191,12 @@ public class OfficerViewAllReportsActivity_New extends BaseActivity {
                 if (isChecked) {
                     animateChip(chipOngoing);
                     updateEmptyStateIcon("ONGOING");
-                    filterReports();
+                    // Navigate to ONGOING activity
+                    Intent intent = new Intent(this, OfficerViewOngoingReportsActivity_New.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+                    finish();
                 }
             });
         }
@@ -194,7 +206,12 @@ public class OfficerViewAllReportsActivity_New extends BaseActivity {
                 if (isChecked) {
                     animateChip(chipResolved);
                     updateEmptyStateIcon("RESOLVED");
-                    filterReports();
+                    // Navigate to RESOLVED activity
+                    Intent intent = new Intent(this, OfficerViewResolvedReportsActivity_New.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+                    finish();
                 }
             });
         }
