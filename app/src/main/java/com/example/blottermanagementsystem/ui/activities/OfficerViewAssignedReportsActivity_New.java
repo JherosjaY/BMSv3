@@ -229,7 +229,8 @@ public class OfficerViewAssignedReportsActivity_New extends BaseActivity {
                 if (isChecked) {
                     animateChip(chipAll);
                     updateEmptyStateIcon("ALL");
-                    navigateToScreen(OfficerViewAllReportsActivity_New.class);
+                    // Filter in current activity instead of navigating
+                    filterReports();
                 }
             });
         }

@@ -184,8 +184,7 @@ public class OfficerDashboardActivity extends BaseActivity {
         setupStatisticsCardListeners();
 
         cardMyCases.setOnClickListener(v -> {
-            Intent intent = new Intent(this, OfficerViewAssignedReportsActivity_New.class);
-            intent.putExtra("SELECTED_CHIP", "ALL");
+            Intent intent = new Intent(this, OfficerViewAllReportsActivity_New.class);
             startActivity(intent);
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         });
@@ -216,20 +215,21 @@ public class OfficerDashboardActivity extends BaseActivity {
 
     private void setupStatisticsCardListeners() {
         try {
+            // Total Cases Card - Navigate to ALL activity
             View cardTotalCases = findViewById(R.id.cardTotalCases);
             if (cardTotalCases != null) {
                 cardTotalCases.setOnClickListener(v -> {
                     try {
-                        Intent intent = new Intent(this, OfficerViewAssignedReportsActivity_New.class);
-                        intent.putExtra("SELECTED_CHIP", "ALL");
+                        Intent intent = new Intent(this, OfficerViewAllReportsActivity_New.class);
                         startActivity(intent);
                         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
                     } catch (Exception e) {
-                        android.util.Log.e("OfficerDashboard", "Error opening ViewAssignedReports", e);
+                        android.util.Log.e("OfficerDashboard", "Error opening ViewAllReports", e);
                     }
                 });
             }
 
+            // Assigned Cases Card - Navigate to ASSIGNED activity
             View cardPending = findViewById(R.id.cardPending);
             if (cardPending != null) {
                 cardPending.setOnClickListener(v -> {
@@ -244,6 +244,7 @@ public class OfficerDashboardActivity extends BaseActivity {
                 });
             }
 
+            // Active Cases Card - Navigate to ONGOING activity
             View cardActive = findViewById(R.id.cardActive);
             if (cardActive != null) {
                 cardActive.setOnClickListener(v -> {
@@ -257,6 +258,7 @@ public class OfficerDashboardActivity extends BaseActivity {
                 });
             }
 
+            // Resolved Cases Card - Navigate to RESOLVED activity
             View cardResolved = findViewById(R.id.cardResolved);
             if (cardResolved != null) {
                 cardResolved.setOnClickListener(v -> {
