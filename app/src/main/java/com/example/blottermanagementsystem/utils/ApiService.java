@@ -260,17 +260,6 @@ class LoginRequest {
     }
 }
 
-class LoginResponse {
-    public boolean success;
-    public String message;
-    public LoginData data;
-    
-    public static class LoginData {
-        public User user;
-        public String token;
-    }
-}
-
 class RegisterRequest {
     public String username;
     public String email;
