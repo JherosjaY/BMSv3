@@ -250,7 +250,7 @@ public interface ApiService {
 
 // ============ AUTH REQUEST/RESPONSE CLASSES ============
 
-public class LoginRequest {
+class LoginRequest {
     public String username;
     public String password;
     
@@ -260,7 +260,7 @@ public class LoginRequest {
     }
 }
 
-public class LoginResponse {
+class LoginResponse {
     public boolean success;
     public String message;
     public LoginData data;
@@ -271,7 +271,7 @@ public class LoginResponse {
     }
 }
 
-public class RegisterRequest {
+class RegisterRequest {
     public String username;
     public String email;
     public String password;
@@ -285,7 +285,7 @@ public class RegisterRequest {
     }
 }
 
-public class RegisterResponse {
+class RegisterResponse {
     public boolean success;
     public String message;
     public RegisterData data;
@@ -296,12 +296,12 @@ public class RegisterResponse {
     }
 }
 
-public class SendCodeResponse {
+class SendCodeResponse {
     public boolean success;
     public String message;
 }
 
-public class VerifyEmailResponse {
+class VerifyEmailResponse {
     public boolean success;
     public String message;
 }
