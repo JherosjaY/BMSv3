@@ -286,14 +286,80 @@ public class LoginActivity extends BaseActivity {
         }
         
         hideError();
+        showLoading(true);
         
-        // Debug: Check what's in database for this username
         android.util.Log.d("LoginActivity", "=== LOGIN DEBUG ===");
         android.util.Log.d("LoginActivity", "Attempting login with:");
         android.util.Log.d("LoginActivity", "Username: " + username);
-        android.util.Log.d("LoginActivity", "Password: " + password);
-        android.util.Log.d("LoginActivity", "Password hash: " + com.example.blottermanagementsystem.utils.SecurityUtils.hashPassword(password));
         
+        // ✅ Try API login first if online
+        com.example.blottermanagementsystem.utils.NetworkMonitor networkMonitor = 
+            new com.example.blottermanagementsystem.utils.NetworkMonitor(this);
+        
+        if (networkMonitor.isNetworkAvailable()) {
+            android.util.Log.d("LoginActivity", "🌐 Online - Attempting API login");
+            attemptApiLogin(username, password);
+        } else {
+            android.util.Log.d("LoginActivity", "📴 Offline - Using local database login");
+            attemptLocalLogin(username, password);
+        }
+    }
+    
+    /**
+     * Attempt login via API (Neon database)
+     */
+    private void attemptApiLogin(String username, String password) {
+        com.example.blottermanagementsystem.utils.ApiClient.login(username, password, 
+            new com.example.blottermanagementsystem.utils.ApiClient.ApiCallback<LoginResponse>() {
+                @Override
+                public void onSuccess(LoginResponse loginResponse) {
+                    android.util.Log.d("LoginActivity", "✅ API login successful");
+                    
+                    // Get user from response
+                    com.example.blottermanagementsystem.data.entity.User apiUser = loginResponse.data.user;
+                    
+                    // Store API ID in user
+                    apiUser.setApiId(apiUser.getId());
+                    
+                    // Save to local database on background thread
+                    java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
+                        com.example.blottermanagementsystem.data.database.BlotterDatabase database = 
+                            com.example.blottermanagementsystem.data.database.BlotterDatabase.getDatabase(LoginActivity.this);
+                        
+                        // Check if user exists locally
+                        com.example.blottermanagementsystem.data.entity.User existingUser = 
+                            database.userDao().getUserByEmail(apiUser.getEmail());
+                        
+                        if (existingUser != null) {
+                            // Update existing user with API ID
+                            existingUser.setApiId(apiUser.getId());
+                            database.userDao().updateUser(existingUser);
+                            android.util.Log.d("LoginActivity", "✅ Updated local user with API ID: " + apiUser.getId());
+                        } else {
+                            // Insert new user
+                            database.userDao().insertUser(apiUser);
+                            android.util.Log.d("LoginActivity", "✅ Inserted new user with API ID: " + apiUser.getId());
+                        }
+                        
+                        // Now proceed with local login
+                        runOnUiThread(() -> attemptLocalLogin(apiUser.getUsername(), password));
+                    });
+                }
+                
+                @Override
+                public void onError(String errorMessage) {
+                    android.util.Log.w("LoginActivity", "⚠️ API login failed: " + errorMessage);
+                    // Fall back to local login
+                    attemptLocalLogin(username, password);
+                }
+            });
+    }
+    
+    /**
+     * Attempt login using local database
+     */
+    private void attemptLocalLogin(String username, String password) {
+        android.util.Log.d("LoginActivity", "🔐 Attempting local database login");
         authViewModel.login(username, password);
     }
     
