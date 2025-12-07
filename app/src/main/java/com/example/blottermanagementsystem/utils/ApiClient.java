@@ -81,6 +81,42 @@ public class ApiClient {
     }
     
     /**
+     * Login user
+     */
+    public static void login(String username, String password, ApiCallback<LoginResponse> callback) {
+        try {
+            LoginRequest loginRequest = new LoginRequest(username, password);
+            getApiService().login(loginRequest).enqueue(new Callback<LoginResponse>() {
+                @Override
+                public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        LoginResponse loginResponse = response.body();
+                        if (loginResponse.success && loginResponse.data != null) {
+                            Log.d(TAG, "✅ Login successful - User ID: " + loginResponse.data.user.getId());
+                            callback.onSuccess(loginResponse);
+                        } else {
+                            Log.e(TAG, "❌ Login failed: " + loginResponse.message);
+                            callback.onError(loginResponse.message);
+                        }
+                    } else {
+                        Log.e(TAG, "❌ Error logging in: " + response.code());
+                        callback.onError("Error: " + response.code());
+                    }
+                }
+                
+                @Override
+                public void onFailure(Call<LoginResponse> call, Throwable t) {
+                    Log.e(TAG, "❌ Network error: " + t.getMessage(), t);
+                    callback.onError("Network error: " + t.getMessage());
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Exception: " + e.getMessage(), e);
+            callback.onError("Exception: " + e.getMessage());
+        }
+    }
+    
+    /**
      * Create a new report
      */
     public static void createReport(BlotterReport report, ApiCallback<BlotterReport> callback) {

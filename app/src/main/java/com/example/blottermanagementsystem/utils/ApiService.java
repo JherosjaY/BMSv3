@@ -1,6 +1,7 @@
 package com.example.blottermanagementsystem.utils;
 
 import com.example.blottermanagementsystem.data.entity.BlotterReport;
+import com.example.blottermanagementsystem.data.entity.User;
 
 import java.util.List;
 
@@ -17,6 +18,22 @@ import retrofit2.http.Path;
  * Defines all HTTP endpoints for the Blotter Management System
  */
 public interface ApiService {
+    
+    // ============ AUTH ============
+    
+    /**
+     * Login user
+     * POST /api/auth/login
+     */
+    @POST("api/auth/login")
+    Call<LoginResponse> login(@Body LoginRequest loginRequest);
+    
+    /**
+     * Register user
+     * POST /api/auth/register
+     */
+    @POST("api/auth/register")
+    Call<RegisterResponse> register(@Body RegisterRequest registerRequest);
     
     // ============ REPORTS ============
     
@@ -215,4 +232,52 @@ public interface ApiService {
      */
     @DELETE("summons/{id}")
     Call<String> deleteSummons(@Path("id") int summonsId);
+}
+
+// ============ AUTH REQUEST/RESPONSE CLASSES ============
+
+class LoginRequest {
+    public String username;
+    public String password;
+    
+    public LoginRequest(String username, String password) {
+        this.username = username;
+        this.password = password;
+    }
+}
+
+class LoginResponse {
+    public boolean success;
+    public String message;
+    public LoginData data;
+    
+    public static class LoginData {
+        public User user;
+        public String token;
+    }
+}
+
+class RegisterRequest {
+    public String username;
+    public String email;
+    public String password;
+    public String confirmPassword;
+    
+    public RegisterRequest(String username, String email, String password, String confirmPassword) {
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.confirmPassword = confirmPassword;
+    }
+}
+
+class RegisterResponse {
+    public boolean success;
+    public String message;
+    public RegisterData data;
+    
+    public static class RegisterData {
+        public User user;
+        public String token;
+    }
 }
