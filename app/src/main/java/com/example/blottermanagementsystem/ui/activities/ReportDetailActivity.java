@@ -595,8 +595,26 @@ public class ReportDetailActivity extends BaseActivity {
         
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
-                // ✅ Delete the case from database
+                // ✅ Delete from local database first
                 database.blotterReportDao().deleteReport(report);
+                Log.d("ReportDetail", "✅ Report deleted from local database: " + report.getCaseNumber());
+                
+                // ✅ Sync delete to API if online
+                NetworkMonitor networkMonitor = new NetworkMonitor(ReportDetailActivity.this);
+                if (networkMonitor.isNetworkAvailable() && report.getId() > 0) {
+                    ApiClient.deleteReport(report.getId(), new ApiClient.ApiCallback<String>() {
+                        @Override
+                        public void onSuccess(String result) {
+                            Log.d("ReportDetail", "✅ Report deleted from API: " + report.getCaseNumber());
+                        }
+                        
+                        @Override
+                        public void onError(String errorMessage) {
+                            Log.w("ReportDetail", "⚠️ Failed to delete from API: " + errorMessage);
+                            // Report already deleted locally, so continue
+                        }
+                    });
+                }
                 
                 // ✅ Cancel the push notification for this case
                 android.app.NotificationManager notificationManager = 
