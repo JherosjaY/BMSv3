@@ -1364,8 +1364,11 @@ public class AddReportActivity extends BaseActivity {
                             @Override
                             public void onSuccess(BlotterReport result) {
                                 android.util.Log.d("AddReport", "✅ Report synced to API: " + result.getId());
-                                // Update local database with API response
-                                database.blotterReportDao().updateReport(result);
+                                // Update local database with API response on background thread
+                                new Thread(() -> {
+                                    database.blotterReportDao().updateReport(result);
+                                    android.util.Log.d("AddReport", "✅ Local database updated with API response");
+                                }).start();
                             }
                             
                             @Override

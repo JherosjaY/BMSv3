@@ -22,37 +22,37 @@ public interface ApiService {
     
     /**
      * Create a new report
-     * POST /reports
+     * POST /api/reports
      */
-    @POST("reports")
+    @POST("api/reports")
     Call<BlotterReport> createReport(@Body BlotterReport report);
     
     /**
      * Get all reports
-     * GET /reports
+     * GET /api/reports
      */
-    @GET("reports")
+    @GET("api/reports")
     Call<List<BlotterReport>> getAllReports();
     
     /**
      * Get report by ID
-     * GET /reports/{id}
+     * GET /api/reports/{id}
      */
-    @GET("reports/{id}")
+    @GET("api/reports/{id}")
     Call<BlotterReport> getReportById(@Path("id") int reportId);
     
     /**
      * Update report
-     * PUT /reports/{id}
+     * PUT /api/reports/{id}
      */
-    @PUT("reports/{id}")
+    @PUT("api/reports/{id}")
     Call<BlotterReport> updateReport(@Path("id") int reportId, @Body BlotterReport report);
     
     /**
      * Delete report
-     * DELETE /reports/{id}
+     * DELETE /api/reports/{id}
      */
-    @DELETE("reports/{id}")
+    @DELETE("api/reports/{id}")
     Call<String> deleteReport(@Path("id") int reportId);
     
     // ============ WITNESSES ============
