@@ -1348,79 +1348,44 @@ public class AddReportActivity extends BaseActivity {
         // Show loading for report submission
         com.example.blottermanagementsystem.utils.GlobalLoadingManager.show(this, "Submitting report...");
         
-        Executors.newSingleThreadExecutor().execute(() -> {
-            try {
-                // Save to local database first
-                long reportId = database.blotterReportDao().insertReport(report);
+        // ✅ PURE ONLINE: Check internet first
+        NetworkMonitor networkMonitor = new NetworkMonitor(AddReportActivity.this);
+        if (!networkMonitor.isNetworkAvailable()) {
+            android.util.Log.e("AddReport", "❌ No internet connection");
+            com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
+            Toast.makeText(this, "No internet connection. Please check your connection.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Online - proceed with API call
+        android.util.Log.d("AddReport", "🌐 Internet available - Submitting report to API");
+        submitReportViaApi(report);
+    }
+    
+    /**
+     * Pure Online: Submit report via API (Neon database only)
+     */
+    private void submitReportViaApi(BlotterReport report) {
+        ApiClient.createReport(report, new ApiClient.ApiCallback<BlotterReport>() {
+            @Override
+            public void onSuccess(BlotterReport result) {
+                android.util.Log.d("AddReport", "✅ Report submitted successfully - Report ID: " + result.getId());
                 
-                if (reportId > 0) {
-                    report.setId((int) reportId);
-                    
-                    // Check if online and sync to API
-                    NetworkMonitor networkMonitor = new NetworkMonitor(AddReportActivity.this);
-                    if (networkMonitor.isNetworkAvailable()) {
-                        // Sync to API
-                        ApiClient.createReport(report, new ApiClient.ApiCallback<BlotterReport>() {
-                            @Override
-                            public void onSuccess(BlotterReport result) {
-                                android.util.Log.d("AddReport", "✅ Report synced to API - API ID: " + result.getId());
-                                // Store the API ID in the local report for future delete operations
-                                report.setApiId(result.getId());
-                                // Update local database with API response on background thread
-                                new Thread(() -> {
-                                    database.blotterReportDao().updateReport(report);
-                                    android.util.Log.d("AddReport", "✅ Local database updated with API ID: " + report.getApiId());
-                                }).start();
-                            }
-                            
-                            @Override
-                            public void onError(String errorMessage) {
-                                android.util.Log.w("AddReport", "⚠️ API sync failed: " + errorMessage);
-                                // Report saved locally, will sync when online
-                            }
-                        });
-                    } else {
-                        android.util.Log.i("AddReport", "Offline mode: Report saved locally, will sync when online");
-                    }
-                    
-                    // Get user name from database
-                    com.example.blottermanagementsystem.data.entity.User user = 
-                        database.userDao().getUserById(userId);
-                    
-                    String userName = "Unknown User";
-                    if (user != null) {
-                        userName = user.getFirstName() + " " + user.getLastName();
-                    }
+                com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
+                Toast.makeText(AddReportActivity.this, "Report submitted successfully!", Toast.LENGTH_SHORT).show();
                 
-                // Send notification to admin about new report
-                NotificationHelper notificationHelper = new NotificationHelper(this);
-                notificationHelper.notifyNewReport(
-                    userId, // Current user ID (the one who filed the report)
-                    report.getCaseNumber(),
-                    userName,
-                    (int) reportId,
-                    userName
-                );
-                
-                runOnUiThread(() -> {
-                    com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
-                    // Redirect to Report Details instead of going back to dashboard
-                    Intent detailsIntent = new Intent(AddReportActivity.this, ReportDetailActivity.class);
-                    detailsIntent.putExtra("REPORT_ID", (int) reportId);
-                    startActivity(detailsIntent);
-                    finish();
-                });
-            } else {
-                runOnUiThread(() -> {
-                    com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
-                    Toast.makeText(this, "Failed to submit report", Toast.LENGTH_SHORT).show();
-                });
+                // Navigate to report details
+                Intent detailsIntent = new Intent(AddReportActivity.this, ReportDetailActivity.class);
+                detailsIntent.putExtra("REPORT_ID", result.getId());
+                startActivity(detailsIntent);
+                finish();
             }
-            } catch (Exception e) {
-                runOnUiThread(() -> {
-                    com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
-                    Toast.makeText(this, "Error submitting report: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+            
+            @Override
+            public void onError(String errorMessage) {
+                android.util.Log.e("AddReport", "❌ Report submission failed: " + errorMessage);
+                com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
+                Toast.makeText(AddReportActivity.this, "Failed to submit report: " + errorMessage, Toast.LENGTH_SHORT).show();
             }
         });
     }
