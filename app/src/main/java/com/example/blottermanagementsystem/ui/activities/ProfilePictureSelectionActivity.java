@@ -439,137 +439,91 @@ public class ProfilePictureSelectionActivity extends BaseActivity {
             final String firstName = etFirstName.getText().toString().trim();
             final String lastName = etLastName.getText().toString().trim();
             
-            android.util.Log.d("ProfilePictureSelection", "=== CONTINUE BUTTON CLICKED ===");
-            android.util.Log.d("ProfilePictureSelection", "FirstName input: '" + firstName + "'");
-            android.util.Log.d("ProfilePictureSelection", "LastName input: '" + lastName + "'");
-            android.util.Log.d("ProfilePictureSelection", "FirstName empty? " + firstName.isEmpty());
-            android.util.Log.d("ProfilePictureSelection", "LastName empty? " + lastName.isEmpty());
+            android.util.Log.d("ProfilePictureSelection", "=== PURE ONLINE PROFILE UPDATE ===");
+            android.util.Log.d("ProfilePictureSelection", "FirstName: '" + firstName + "'");
+            android.util.Log.d("ProfilePictureSelection", "LastName: '" + lastName + "'");
             
             if (firstName.isEmpty() || lastName.isEmpty()) {
                 Toast.makeText(this, "Please enter your first and last name", Toast.LENGTH_SHORT).show();
-                android.util.Log.w("ProfilePictureSelection", "⚠️ User tried to continue without entering names!");
                 return;
             }
             
-            // Save profile picture URI if selected
+            // Check internet connection
+            com.example.blottermanagementsystem.utils.NetworkMonitor networkMonitor = 
+                new com.example.blottermanagementsystem.utils.NetworkMonitor(this);
+            
+            if (!networkMonitor.isNetworkAvailable()) {
+                android.util.Log.e("ProfilePictureSelection", "❌ No internet connection");
+                Toast.makeText(this, "No internet connection. Please check your connection.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // Get userId from preferences
+            String userId = preferencesManager.getUserId();
+            
+            if (userId == null || userId.isEmpty()) {
+                android.util.Log.e("ProfilePictureSelection", "❌ User ID not found");
+                Toast.makeText(this, "Error: User ID not found. Please log in again.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            android.util.Log.d("ProfilePictureSelection", "🌐 Updating profile via API - UserId: " + userId);
+            
+            // Save profile picture URI locally if selected
             if (selectedImageUri != null) {
-                // Only try to grant persistent permission for non-FileProvider URIs
-                // FileProvider URIs are already in our app's storage and don't need persistent permissions
                 String uriString = selectedImageUri.toString();
-                if (!uriString.contains("com.example.blottermanagementsystem.provider")) {
-                    try {
-                        getContentResolver().takePersistableUriPermission(
-                            selectedImageUri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        );
-                        android.util.Log.d("ProfilePictureSelection", "✅ Granted persistent permission for gallery URI");
-                    } catch (Exception e) {
-                        android.util.Log.w("ProfilePictureSelection", "Could not grant persistent permission: " + e.getMessage());
-                    }
-                } else {
-                    android.util.Log.d("ProfilePictureSelection", "ℹ️ FileProvider URI - no persistent permission needed");
-                }
-                
                 preferencesManager.setProfileImageUri(uriString);
-                android.util.Log.d("ProfilePictureSelection", "✅ Saved URI to preferences: " + uriString);
-            } else {
-                android.util.Log.w("ProfilePictureSelection", "⚠️ No image selected - selectedImageUri is NULL");
+                android.util.Log.d("ProfilePictureSelection", "✅ Saved profile image URI locally");
             }
             
             preferencesManager.setHasSelectedProfilePicture(true);
+            preferencesManager.setFirstName(firstName);
+            preferencesManager.setLastName(lastName);
             
-            // Update user in database (MUST complete before navigation)
-            int userIdTemp = preferencesManager.getUserId();
-            
-            // If userId is -1, try to get it from Intent
-            if (userIdTemp == -1) {
-                int userIdFromIntent = getIntent().getIntExtra("USER_ID", -1);
-                if (userIdFromIntent != -1) {
-                    android.util.Log.d("ProfilePictureSelection", "⚠️ userId was -1, restoring from Intent: " + userIdFromIntent);
-                    userIdTemp = userIdFromIntent;
-                    preferencesManager.setUserId(userIdTemp);
-                }
-            }
-            
-            final int userId = userIdTemp; // Make it final for lambda
-            
-            android.util.Log.d("ProfilePictureSelection", "🔍 Checking userId: " + userId);
-            android.util.Log.d("ProfilePictureSelection", "🔍 selectedImageUri: " + (selectedImageUri != null ? selectedImageUri.toString() : "NULL"));
-            
-            if (userId != -1) {
-                android.util.Log.d("ProfilePictureSelection", "✅ Starting database update thread...");
-                Executors.newSingleThreadExecutor().execute(() -> {
-                    com.example.blottermanagementsystem.data.database.BlotterDatabase database = 
-                        com.example.blottermanagementsystem.data.database.BlotterDatabase.getDatabase(this);
-                    com.example.blottermanagementsystem.data.entity.User user = database.userDao().getUserById(userId);
-                    
-                    android.util.Log.d("ProfilePictureSelection", "=== DATABASE UPDATE ===");
-                    android.util.Log.d("ProfilePictureSelection", "UserID: " + userId);
-                    android.util.Log.d("ProfilePictureSelection", "User found: " + (user != null));
-                    
-                    if (user != null) {
-                        android.util.Log.d("ProfilePictureSelection", "🔧 SETTING USER DATA:");
-                        android.util.Log.d("ProfilePictureSelection", "  FirstName: '" + firstName + "'");
-                        android.util.Log.d("ProfilePictureSelection", "  LastName: '" + lastName + "'");
-                        
-                        user.setFirstName(firstName);
-                        user.setLastName(lastName);
-                        
-                        // Save profile picture URI to database
-                        if (selectedImageUri != null) {
-                            String uriString = selectedImageUri.toString();
-                            user.setProfilePhotoUri(uriString);
-                            android.util.Log.d("ProfilePictureSelection", "✅ Setting profile URI in database: " + uriString);
-                        } else {
-                            android.util.Log.w("ProfilePictureSelection", "⚠️ selectedImageUri is NULL - not saving to database");
-                        }
-                        
-                        // Mark profile as completed
-                        user.setProfileCompleted(true);
-                        android.util.Log.d("ProfilePictureSelection", "✅ Marking profile as completed");
-                        
-                        database.userDao().updateUser(user);
-                        android.util.Log.d("ProfilePictureSelection", "✅ Updated user in database: " + firstName + " " + lastName);
-                        
-                        // VERIFY the save
-                        User verifyAfterSave = database.userDao().getUserById(userId);
-                        if (verifyAfterSave != null) {
-                            android.util.Log.d("ProfilePictureSelection", "✅ VERIFY AFTER SAVE:");
-                            android.util.Log.d("ProfilePictureSelection", "  FirstName in DB: '" + verifyAfterSave.getFirstName() + "'");
-                            android.util.Log.d("ProfilePictureSelection", "  LastName in DB: '" + verifyAfterSave.getLastName() + "'");
-                            android.util.Log.d("ProfilePictureSelection", "  ProfilePhotoUri in DB: '" + verifyAfterSave.getProfilePhotoUri() + "'");
-                        }
-                        
-                        // Update PreferencesManager AFTER database update
-                        preferencesManager.setFirstName(firstName);
-                        preferencesManager.setLastName(lastName);
-                        android.util.Log.d("ProfilePictureSelection", "✅ Updated preferences with name");
-                        
-                        
-                        // Verify the update
-                        com.example.blottermanagementsystem.data.entity.User verifyUser = database.userDao().getUserById(userId);
-                        if (verifyUser != null) {
-                            android.util.Log.d("ProfilePictureSelection", "✅ VERIFY: FirstName = " + verifyUser.getFirstName());
-                            android.util.Log.d("ProfilePictureSelection", "✅ VERIFY: LastName = " + verifyUser.getLastName());
-                            android.util.Log.d("ProfilePictureSelection", "✅ VERIFY: ProfilePhotoUri = " + verifyUser.getProfilePhotoUri());
-                            android.util.Log.d("ProfilePictureSelection", "✅ VERIFY: ProfileCompleted = " + verifyUser.isProfileCompleted());
-                        } else {
-                            android.util.Log.e("ProfilePictureSelection", "❌ VERIFY FAILED: Could not reload user from database!");
-                        }
-                        
-                        // Navigate AFTER database update
-                        runOnUiThread(() -> navigateToDashboard());
-                    } else {
-                        android.util.Log.e("ProfilePictureSelection", "❌ User not found in database!");
-                        runOnUiThread(() -> navigateToDashboard());
-                    }
-                });
-                return; // Don't navigate yet - wait for database update
-            }
-            
-            // If userId is -1, navigate immediately (shouldn't happen but fallback)
-            navigateToDashboard();
+            // Update user profile via API (Neon)
+            updateProfileViaApi(userId, firstName, lastName);
         });
+    }
+    
+    /**
+     * Pure Online: Update user profile via API (Neon database only)
+     */
+    private void updateProfileViaApi(String userId, String firstName, String lastName) {
+        showLoading(true);
+        
+        android.util.Log.d("ProfilePictureSelection", "🌐 Calling API to update profile...");
+        
+        // Create user object with updated data
+        com.example.blottermanagementsystem.data.entity.User updatedUser = new com.example.blottermanagementsystem.data.entity.User();
+        updatedUser.setId(userId);
+        updatedUser.setFirstName(firstName);
+        updatedUser.setLastName(lastName);
+        updatedUser.setProfileCompleted(true);
+        
+        if (selectedImageUri != null) {
+            updatedUser.setProfilePhotoUri(selectedImageUri.toString());
+        }
+        
+        // Call API to update profile
+        com.example.blottermanagementsystem.utils.ApiClient.updateProfile(userId, updatedUser, 
+            new com.example.blottermanagementsystem.utils.ApiClient.ApiCallback<Object>() {
+                @Override
+                public void onSuccess(Object response) {
+                    android.util.Log.d("ProfilePictureSelection", "✅ Profile updated successfully via API");
+                    showLoading(false);
+                    Toast.makeText(ProfilePictureSelectionActivity.this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
+                    navigateToDashboard();
+                }
+                
+                @Override
+                public void onError(String errorMessage) {
+                    android.util.Log.e("ProfilePictureSelection", "❌ Profile update failed: " + errorMessage);
+                    showLoading(false);
+                    Toast.makeText(ProfilePictureSelectionActivity.this, "Profile update failed: " + errorMessage, Toast.LENGTH_SHORT).show();
+                    // Still navigate to dashboard (profile was saved locally)
+                    navigateToDashboard();
+                }
+            });
     }
     
     private void navigateToDashboard() {
