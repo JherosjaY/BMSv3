@@ -146,99 +146,80 @@ public class OfficerWelcomeActivity extends AppCompatActivity {
         if (currentPassword.isEmpty()) {
             Toast.makeText(this, "⚠️ Please enter current password", Toast.LENGTH_SHORT).show();
             tilCurrentPassword.setBoxStrokeColor(getResources().getColor(R.color.error_red));
-            etCurrentPassword.requestFocus();
             return;
         }
         
         if (newPassword.isEmpty()) {
             Toast.makeText(this, "⚠️ Please enter new password", Toast.LENGTH_SHORT).show();
-            tilNewPassword.setBoxStrokeColor(getResources().getColor(R.color.error_red));
+            tilNewPassword.setBoxStrokeColor(getResources().getColor(R.color.text_input_box_stroke));
             etNewPassword.requestFocus();
             return;
         }
         
         // STRICT PASSWORD VALIDATION - Same as login screen
-        if (!isValidPassword(newPassword)) {
-            Toast.makeText(this, "⚠️ Password must be at least 8 characters with uppercase, lowercase, number, and special character", Toast.LENGTH_LONG).show();
-            tilNewPassword.setBoxStrokeColor(getResources().getColor(R.color.error_red));
-            etNewPassword.requestFocus();
-            return;
-        }
-        
-        if (!newPassword.equals(confirmPassword)) {
-            Toast.makeText(this, "⚠️ Passwords do not match", Toast.LENGTH_SHORT).show();
+{{ ... }}
             tilConfirmPassword.setBoxStrokeColor(getResources().getColor(R.color.error_red));
             etConfirmPassword.requestFocus();
             return;
         }
         
-        // Verify current password and update
+        // ✅ PURE ONLINE: Check internet first
+        com.example.blottermanagementsystem.utils.NetworkMonitor networkMonitor = 
+            new com.example.blottermanagementsystem.utils.NetworkMonitor(this);
+        
+        if (!networkMonitor.isNetworkAvailable()) {
+            android.util.Log.e("OfficerWelcome", "❌ No internet connection");
+            Toast.makeText(this, "No internet connection", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Change password via API
         btnChangePassword.setEnabled(false);
         btnChangePassword.setText("Changing...");
         
-        Executors.newSingleThreadExecutor().execute(() -> {
-            int userId = preferencesManager.getUserId();
-            User user = database.userDao().getUserById(userId);
-            
-            runOnUiThread(() -> {
-                if (user == null) {
-                    Toast.makeText(this, "User not found", Toast.LENGTH_SHORT).show();
-                    btnChangePassword.setEnabled(true);
-                    btnChangePassword.setText("Change Password & Continue");
-                    return;
-                }
-                
-                // Verify current password - handle both hashed and plain text passwords
-                String storedPassword = user.getPassword();
-                boolean passwordValid = false;
-                
-                // Check if stored password is hashed (64 hex characters for SHA-256)
-                if (SecurityUtils.isPasswordHashed(storedPassword)) {
-                    // Stored password is hashed - use verifyPassword
-                    passwordValid = SecurityUtils.verifyPassword(currentPassword, storedPassword);
-                } else {
-                    // Stored password is plain text - direct comparison
-                    passwordValid = currentPassword.equals(storedPassword);
-                }
-                
-                if (!passwordValid) {
-                    android.util.Log.d("OfficerWelcome", "❌ Incorrect password attempt");
-                    
-                    // Show error message with red outline
-                    Toast.makeText(this, "❌ Invalid password input", Toast.LENGTH_SHORT).show();
-                    tilCurrentPassword.setBoxStrokeColor(getResources().getColor(R.color.error_red));
-                    etCurrentPassword.requestFocus();
-                    
-                    // Reset button state
-                    btnChangePassword.setEnabled(true);
-                    btnChangePassword.setText("Change Password & Continue");
-                    return;
-                }
-                
-                // Update password (hash the new password!)
-                String hashedNewPassword = SecurityUtils.hashPassword(newPassword);
-                user.setPassword(hashedNewPassword);
-                
-                android.util.Log.d("OfficerWelcome", "✅ Password changed successfully!");
-                
-                Executors.newSingleThreadExecutor().execute(() -> {
-                    database.userDao().updateUser(user);
+        String userId = preferencesManager.getUserId();
+        android.util.Log.d("OfficerWelcome", "🌐 Changing password via API for user: " + userId);
+        
+        com.example.blottermanagementsystem.utils.ApiClient.changePassword(userId, currentPassword, newPassword,
+            new com.example.blottermanagementsystem.utils.ApiClient.ApiCallback<Object>() {
+                @Override
+                public void onSuccess(Object response) {
+                    android.util.Log.d("OfficerWelcome", "✅ Password changed successfully via API!");
                     
                     runOnUiThread(() -> {
-                        // Mark as password changed FIRST
+                        Toast.makeText(OfficerWelcomeActivity.this, "✅ Password changed successfully!", Toast.LENGTH_SHORT).show();
+                        
+                        // Mark as password changed
                         preferencesManager.setPasswordChanged(true);
                         
                         // Small delay to ensure preference is saved
                         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                             // Navigate to Officer Dashboard
-                            Intent intent = new Intent(this, OfficerDashboardActivity.class);
+                            Intent intent = new Intent(OfficerWelcomeActivity.this, OfficerDashboardActivity.class);
                             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                             startActivity(intent);
                             finish();
                         }, 500);
                     });
-                });
+                }
+                
+                @Override
+                public void onError(String errorMessage) {
+                    android.util.Log.e("OfficerWelcome", "❌ Failed to change password: " + errorMessage);
+                    
+                    runOnUiThread(() -> {
+                        if (errorMessage.contains("Invalid current password")) {
+                            Toast.makeText(OfficerWelcomeActivity.this, "❌ Invalid current password", Toast.LENGTH_SHORT).show();
+                            tilCurrentPassword.setBoxStrokeColor(getResources().getColor(R.color.error_red));
+                            etCurrentPassword.requestFocus();
+                        } else {
+                            Toast.makeText(OfficerWelcomeActivity.this, "Failed to change password: " + errorMessage, Toast.LENGTH_SHORT).show();
+                        }
+                        
+                        btnChangePassword.setEnabled(true);
+                        btnChangePassword.setText("Change Password & Continue");
+                    });
+                }
             });
-        });
     }
 }
