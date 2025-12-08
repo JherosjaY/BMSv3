@@ -254,79 +254,65 @@ public class OfficerMyCasesActivity extends BaseActivity {
         // Container card ALWAYS visible - never hide it
         if (isFirstLoad && emptyStateCard != null) emptyStateCard.setVisibility(View.VISIBLE);
         
-        Executors.newSingleThreadExecutor().execute(() -> {
-            try {
-                int userId = preferencesManager.getUserId();
-                // Get the officer record for this user
-                com.example.blottermanagementsystem.data.entity.Officer officer = database.officerDao().getOfficerByUserId(userId);
-                int officerId = (officer != null) ? officer.getId() : -1;
-                
-                List<BlotterReport> reports = database.blotterReportDao().getAllReports();
-                
-                android.util.Log.d("OfficerMyCases", "Loading cases for user ID: " + userId + ", Officer ID: " + officerId);
-                android.util.Log.d("OfficerMyCases", "Total reports in database: " + reports.size());
-                
-                // Filter only officer's assigned cases
-                allCases.clear();
-                for (BlotterReport report : reports) {
-                    // Check if officer is assigned (either single or multiple officers)
-                    boolean isAssignedToOfficer = false;
+        // ✅ PURE ONLINE: Check internet first
+        com.example.blottermanagementsystem.utils.NetworkMonitor networkMonitor = 
+            new com.example.blottermanagementsystem.utils.NetworkMonitor(this);
+        
+        if (!networkMonitor.isNetworkAvailable()) {
+            android.util.Log.e("OfficerMyCases", "❌ No internet connection");
+            runOnUiThread(() -> {
+                if (progressBar != null) progressBar.setVisibility(View.GONE);
+                android.widget.Toast.makeText(this, "No internet connection", android.widget.Toast.LENGTH_SHORT).show();
+            });
+            return;
+        }
+        
+        // Online - load from API
+        android.util.Log.d("OfficerMyCases", "🌐 Loading assigned cases from API");
+        com.example.blottermanagementsystem.utils.ApiClient.getAssignedReports(
+            new com.example.blottermanagementsystem.utils.ApiClient.ApiCallback<java.util.List<BlotterReport>>() {
+                @Override
+                public void onSuccess(java.util.List<BlotterReport> assignedReports) {
+                    android.util.Log.d("OfficerMyCases", "✅ Loaded " + assignedReports.size() + " assigned cases from API");
                     
-                    // Check single officer assignment
-                    if (report.getAssignedOfficerId() != null && report.getAssignedOfficerId().intValue() == officerId) {
-                        isAssignedToOfficer = true;
-                    }
-                    
-                    // Check multiple officers assignment
-                    if (!isAssignedToOfficer && report.getAssignedOfficerIds() != null && !report.getAssignedOfficerIds().isEmpty()) {
-                        String[] officerIds = report.getAssignedOfficerIds().split(",");
-                        for (String id : officerIds) {
-                            try {
-                                if (Integer.parseInt(id.trim()) == officerId) {
-                                    isAssignedToOfficer = true;
-                                    break;
-                                }
-                            } catch (NumberFormatException e) {
-                                // Ignore invalid IDs
-                            }
+                    runOnUiThread(() -> {
+                        // Hide progress bar only on first load
+                        if (progressBar != null && progressBar.getVisibility() == View.VISIBLE) {
+                            progressBar.setVisibility(View.GONE);
                         }
-                    }
-                    
-                    if (isAssignedToOfficer) {
-                        allCases.add(report);
-                        android.util.Log.d("OfficerMyCases", "Found assigned case: " + report.getCaseNumber());
-                    }
+                        
+                        // Background CardView ALWAYS stays visible
+                        if (emptyStateCard != null) emptyStateCard.setVisibility(View.VISIBLE);
+                        
+                        allCases.clear();
+                        if (assignedReports != null) {
+                            allCases.addAll(assignedReports);
+                        }
+                        
+                        if (allCases.isEmpty()) {
+                            if (emptyState != null) emptyState.setVisibility(View.VISIBLE);
+                            if (recyclerView != null) recyclerView.setVisibility(View.GONE);
+                            if (tvTotalCases != null) tvTotalCases.setText("0");
+                        } else {
+                            if (emptyState != null) emptyState.setVisibility(View.GONE);
+                            if (recyclerView != null) recyclerView.setVisibility(View.VISIBLE);
+                            if (tvTotalCases != null) tvTotalCases.setText(String.valueOf(allCases.size()));
+                            updateStatistics();
+                            updateFilterCounts();
+                            applyFilter();
+                        }
+                    });
                 }
                 
-                android.util.Log.d("OfficerMyCases", "Total assigned cases: " + allCases.size());
-                
-                runOnUiThread(() -> {
-                    // Hide progress bar only on first load
-                    if (progressBar != null && progressBar.getVisibility() == View.VISIBLE) {
-                        progressBar.setVisibility(View.GONE);
-                    }
-                    
-                    // Background CardView ALWAYS stays visible - never hide it
-                    // Only toggle between empty state content and recycler view
-                    if (emptyStateCard != null) emptyStateCard.setVisibility(View.VISIBLE);
-                    
-                    if (allCases.isEmpty()) {
-                        if (emptyState != null) emptyState.setVisibility(View.VISIBLE);
-                        if (recyclerView != null) recyclerView.setVisibility(View.GONE);
-                        if (tvTotalCases != null) tvTotalCases.setText("0");
-                    } else {
-                        if (emptyState != null) emptyState.setVisibility(View.GONE);
-                        if (recyclerView != null) recyclerView.setVisibility(View.VISIBLE);
-                        if (tvTotalCases != null) tvTotalCases.setText(String.valueOf(allCases.size()));
-                        updateStatistics();
-                        updateFilterCounts();
-                        applyFilter();
-                    }
-                });
-            } catch (Exception e) {
-                android.util.Log.e("OfficerMyCases", "Error loading cases: " + e.getMessage(), e);
-            }
-        });
+                @Override
+                public void onError(String errorMessage) {
+                    android.util.Log.e("OfficerMyCases", "❌ Failed to load cases: " + errorMessage);
+                    runOnUiThread(() -> {
+                        if (progressBar != null) progressBar.setVisibility(View.GONE);
+                        android.widget.Toast.makeText(OfficerMyCasesActivity.this, "Failed to load cases", android.widget.Toast.LENGTH_SHORT).show();
+                    });
+                }
+            });
     }
     
     private void updateStatistics() {
