@@ -339,65 +339,53 @@ public class AdminReportOversightActivity extends BaseActivity {
     }
     
     private void loadReports() {
-        android.util.Log.d("AdminOverview", "loadReports() called");
+        android.util.Log.d("AdminOverview", "=== PURE ONLINE: Loading reports from API ===");
         
-        // Load from LOCAL DATABASE FIRST (fast)
-        Executors.newSingleThreadExecutor().execute(() -> {
-            try {
-                android.util.Log.d("AdminOverview", "Querying database for all reports...");
-                List<BlotterReport> reports = database.blotterReportDao().getAllReports();
-                android.util.Log.d("AdminOverview", "Database returned " + (reports != null ? reports.size() : "null") + " reports");
+        // ✅ PURE ONLINE: Check internet first
+        NetworkMonitor networkMonitor = new NetworkMonitor(this);
+        if (!networkMonitor.isNetworkAvailable()) {
+            android.util.Log.e("AdminOverview", "❌ No internet connection");
+            runOnUiThread(() -> {
+                Toast.makeText(this, "No internet connection", Toast.LENGTH_SHORT).show();
+                updateEmptyState();
+            });
+            return;
+        }
+        
+        // Online - load from API
+        android.util.Log.d("AdminOverview", "🌐 Loading all reports from API");
+        loadReportsViaApi();
+    }
+    
+    /**
+     * Pure Online: Load all reports via API (Neon database only)
+     */
+    private void loadReportsViaApi() {
+        ApiClient.getAllReports(new ApiClient.ApiCallback<List<BlotterReport>>() {
+            @Override
+            public void onSuccess(List<BlotterReport> apiReports) {
+                android.util.Log.d("AdminOverview", "✅ Loaded " + apiReports.size() + " reports from API");
                 
                 runOnUiThread(() -> {
-                    android.util.Log.d("AdminOverview", "Updating UI with " + (reports != null ? reports.size() : 0) + " reports");
                     allReports.clear();
-                    if (reports != null) {
-                        allReports.addAll(reports);
+                    if (apiReports != null) {
+                        allReports.addAll(apiReports);
                     }
                     android.util.Log.d("AdminOverview", "allReports now has " + allReports.size() + " items");
                     filterReports();
+                    updateEmptyState();
                 });
-            } catch (Exception e) {
-                android.util.Log.e("AdminOverview", "Error loading from database: " + e.getMessage(), e);
+            }
+            
+            @Override
+            public void onError(String errorMessage) {
+                android.util.Log.e("AdminOverview", "❌ Failed to load reports: " + errorMessage);
+                runOnUiThread(() -> {
+                    Toast.makeText(AdminReportOversightActivity.this, "Failed to load reports", Toast.LENGTH_SHORT).show();
+                    updateEmptyState();
+                });
             }
         });
-        
-        // Sync with API in background (don't block UI)
-        NetworkMonitor networkMonitor = new NetworkMonitor(this);
-        if (networkMonitor.isNetworkAvailable()) {
-            Executors.newSingleThreadExecutor().execute(() -> {
-                ApiClient.getAllReports(new ApiClient.ApiCallback<List<BlotterReport>>() {
-                    @Override
-                    public void onSuccess(List<BlotterReport> apiReports) {
-                        Executors.newSingleThreadExecutor().execute(() -> {
-                            try {
-                                for (BlotterReport report : apiReports) {
-                                    BlotterReport existing = database.blotterReportDao().getReportById(report.getId());
-                                    if (existing == null) {
-                                        database.blotterReportDao().insertReport(report);
-                                    } else {
-                                        database.blotterReportDao().updateReport(report);
-                                    }
-                                }
-                                
-                                runOnUiThread(() -> {
-                                    allReports.clear();
-                                    allReports.addAll(apiReports);
-                                    filterReports();
-                                });
-                            } catch (Exception e) {
-                                android.util.Log.e("AdminOverview", "Error syncing API data: " + e.getMessage());
-                            }
-                        });
-                    }
-                    
-                    @Override
-                    public void onError(String errorMessage) {
-                        android.util.Log.w("AdminOverview", "API sync error: " + errorMessage);
-                    }
-                });
-            });
-        }
     }
     
     private void startPeriodicRefresh() {
