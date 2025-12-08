@@ -1003,48 +1003,46 @@ public class EditReportActivity extends BaseActivity {
         // Show loading for report update
         com.example.blottermanagementsystem.utils.GlobalLoadingManager.show(this, "Updating report...");
         
-        Executors.newSingleThreadExecutor().execute(() -> {
-            try {
-                // Save to local database first
-                database.blotterReportDao().updateReport(report);
+        // ✅ PURE ONLINE: Check internet first
+        NetworkMonitor networkMonitor = new NetworkMonitor(EditReportActivity.this);
+        if (!networkMonitor.isNetworkAvailable()) {
+            android.util.Log.e("EditReport", "❌ No internet connection");
+            com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
+            Toast.makeText(this, "No internet connection. Please check your connection.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Online - proceed with API call
+        android.util.Log.d("EditReport", "🌐 Internet available - Updating report via API");
+        updateReportViaApi(report);
+    }
+    
+    /**
+     * Pure Online: Update report via API (Neon database only)
+     */
+    private void updateReportViaApi(BlotterReport report) {
+        ApiClient.updateReport(reportId, report, new ApiClient.ApiCallback<BlotterReport>() {
+            @Override
+            public void onSuccess(BlotterReport result) {
+                android.util.Log.d("EditReport", "✅ Report updated successfully via API - Report ID: " + result.getId());
                 
-                // Check if online and sync to API
-                NetworkMonitor networkMonitor = new NetworkMonitor(EditReportActivity.this);
-                if (networkMonitor.isNetworkAvailable()) {
-                    // Sync to API
-                    ApiClient.updateReport(reportId, report, new ApiClient.ApiCallback<BlotterReport>() {
-                        @Override
-                        public void onSuccess(BlotterReport result) {
-                            android.util.Log.d("EditReport", "✅ Report synced to API: " + result.getId());
-                            // Update local database with API response
-                            database.blotterReportDao().updateReport(result);
-                        }
-                        
-                        @Override
-                        public void onError(String errorMessage) {
-                            android.util.Log.w("EditReport", "⚠️ API sync failed: " + errorMessage);
-                        }
-                    });
-                } else {
-                    android.util.Log.i("EditReport", "Offline mode: Report updated locally, will sync when online");
-                }
+                com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
+                Toast.makeText(EditReportActivity.this, "Report updated successfully!", Toast.LENGTH_SHORT).show();
                 
-                runOnUiThread(() -> {
-                    com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
-                    
-                    // Pass result back to ReportDetailActivity to trigger refresh
-                    Intent resultIntent = new Intent();
-                    resultIntent.putExtra("REPORT_UPDATED", true);
-                    resultIntent.putExtra("REPORT_ID", reportId);
-                    setResult(RESULT_OK, resultIntent);
-                    
-                    finish();
-                });
-            } catch (Exception e) {
-                runOnUiThread(() -> {
-                    com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
-                    Toast.makeText(this, "Error updating report: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                // Pass result back to ReportDetailActivity to trigger refresh
+                Intent resultIntent = new Intent();
+                resultIntent.putExtra("REPORT_UPDATED", true);
+                resultIntent.putExtra("REPORT_ID", reportId);
+                setResult(RESULT_OK, resultIntent);
+                
+                finish();
+            }
+            
+            @Override
+            public void onError(String errorMessage) {
+                android.util.Log.e("EditReport", "❌ Report update failed: " + errorMessage);
+                com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
+                Toast.makeText(EditReportActivity.this, "Failed to update report: " + errorMessage, Toast.LENGTH_SHORT).show();
             }
         });
     }
