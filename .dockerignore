@@ -1,0 +1,10 @@
+.git
+.gitignore
+.gradle
+.idea
+build
+*.iml
+local.properties
+*.log
+.DS_Store
+node_modules
