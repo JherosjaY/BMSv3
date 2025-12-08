@@ -417,105 +417,96 @@ public class UserDashboardActivity extends BaseActivity {
     }
     
     private void loadData() {
-        int userId = preferencesManager.getUserId();
+        String userId = preferencesManager.getUserId();
         
         // Show loading for user dashboard
         com.example.blottermanagementsystem.utils.GlobalLoadingManager.show(this, "Loading reports...");
         
-        Executors.newSingleThreadExecutor().execute(() -> {
-            try {
-            List<BlotterReport> allReports = database.blotterReportDao().getAllReports();
-            
-            // Filter reports by current user
-            List<BlotterReport> userReports = new ArrayList<>();
-            for (BlotterReport report : allReports) {
-                if (report.getReportedById() == userId) {
-                    userReports.add(report);
-                }
-            }
-            
-            // Sort by date descending (newest first)
-            userReports.sort((r1, r2) -> Long.compare(r2.getIncidentDate(), r1.getIncidentDate()));
-            
-            // Show all user reports (no limit)
-            List<BlotterReport> recentReports = userReports;
-            
-            // Count reports by status
-            int pendingCount = 0;
-            int ongoingCount = 0;
-            int resolvedCount = 0;
-            
-            for (BlotterReport report : userReports) {
-                String status = report.getStatus();
-                if (status != null && ("pending".equalsIgnoreCase(status))) {
-                    pendingCount++;
-                } else if (status != null && ("ongoing".equalsIgnoreCase(status) || "in-progress".equalsIgnoreCase(status))) {
-                    ongoingCount++;
-                } else if (status != null && ("resolved".equalsIgnoreCase(status))) {
-                    resolvedCount++;
-                }
-            }
-            
-            // Get unread notifications count
-            int unreadNotifications = database.notificationDao()
-                .getUnreadNotificationsForUser(userId).size();
-            
-            final int totalCount = userReports.size();
-            final int finalPendingCount = pendingCount;
-            final int finalOngoingCount = ongoingCount;
-            final int finalResolvedCount = resolvedCount;
-            final int finalUnreadCount = unreadNotifications;
-            
-            runOnUiThread(() -> {
-                reportsList.clear();
-                reportsList.addAll(recentReports); // Show all reports
-                adapter.notifyDataSetChanged();
-                
-                // Update counts
-                tvTotalReports.setText(String.valueOf(totalCount));
-                tvPendingReports.setText(String.valueOf(finalPendingCount));
-                tvOngoingReports.setText(String.valueOf(finalOngoingCount));
-                tvResolvedReports.setText(String.valueOf(finalResolvedCount));
-                
-                // Load profile picture
-                loadProfilePicture();
-                
-                // CardView always visible as background
-                if (emptyStateCard != null) {
-                    emptyStateCard.setVisibility(View.VISIBLE);
-                }
-                
-                if (recentReports.isEmpty()) {
-                    // Empty state - show empty message, hide RecyclerView
-                    if (emptyState != null) {
-                        emptyState.setVisibility(View.VISIBLE);
+        // ✅ PURE ONLINE: Check internet first
+        com.example.blottermanagementsystem.utils.NetworkMonitor networkMonitor = 
+            new com.example.blottermanagementsystem.utils.NetworkMonitor(this);
+        
+        if (!networkMonitor.isNetworkAvailable()) {
+            android.util.Log.e("UserDashboard", "❌ No internet connection");
+            com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
+            Toast.makeText(this, "No internet connection. Please check your connection.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Online - proceed with API call
+        android.util.Log.d("UserDashboard", "🌐 Internet available - Loading reports from API");
+        loadReportsViaApi(userId);
+    }
+    
+    /**
+     * Pure Online: Load reports via API (Neon database only)
+     */
+    private void loadReportsViaApi(String userId) {
+        com.example.blottermanagementsystem.utils.ApiClient.getAllReports(
+            new com.example.blottermanagementsystem.utils.ApiClient.ApiCallback<List<BlotterReport>>() {
+                @Override
+                public void onSuccess(List<BlotterReport> allReports) {
+                    android.util.Log.d("UserDashboard", "✅ Reports loaded from API: " + allReports.size());
+                    
+                    // Filter reports by current user
+                    List<BlotterReport> userReports = new ArrayList<>();
+                    for (BlotterReport report : allReports) {
+                        if (report.getReportedById().equals(userId)) {
+                            userReports.add(report);
+                        }
                     }
-                    if (recyclerReports != null) {
-                        recyclerReports.setVisibility(View.GONE);
+                    
+                    // Count reports by status
+                    int pendingCount = 0, ongoingCount = 0, resolvedCount = 0;
+                    for (BlotterReport report : userReports) {
+                        String status = report.getStatus();
+                        if (status != null) {
+                            if ("pending".equalsIgnoreCase(status)) pendingCount++;
+                            else if ("ongoing".equalsIgnoreCase(status) || "in-progress".equalsIgnoreCase(status)) ongoingCount++;
+                            else if ("resolved".equalsIgnoreCase(status)) resolvedCount++;
+                        }
                     }
-                } else {
-                    // Has data - hide empty message, show RecyclerView on top of CardView
-                    if (emptyState != null) {
-                        emptyState.setVisibility(View.GONE);
-                    }
-                    if (recyclerReports != null) {
-                        recyclerReports.setVisibility(View.VISIBLE);
-                    }
+                    
+                    final int finalPending = pendingCount;
+                    final int finalOngoing = ongoingCount;
+                    final int finalResolved = resolvedCount;
+                    
+                    runOnUiThread(() -> {
+                        reportsList.clear();
+                        reportsList.addAll(userReports);
+                        adapter.notifyDataSetChanged();
+                        
+                        // Update counts
+                        tvTotalReports.setText(String.valueOf(userReports.size()));
+                        tvPendingReports.setText(String.valueOf(finalPending));
+                        tvOngoingReports.setText(String.valueOf(finalOngoing));
+                        tvResolvedReports.setText(String.valueOf(finalResolved));
+                        
+                        // Update UI visibility
+                        if (emptyStateCard != null) emptyStateCard.setVisibility(View.VISIBLE);
+                        if (userReports.isEmpty()) {
+                            if (emptyState != null) emptyState.setVisibility(View.VISIBLE);
+                            if (recyclerReports != null) recyclerReports.setVisibility(View.GONE);
+                        } else {
+                            if (emptyState != null) emptyState.setVisibility(View.GONE);
+                            if (recyclerReports != null) recyclerReports.setVisibility(View.VISIBLE);
+                        }
+                        
+                        swipeRefresh.setRefreshing(false);
+                        com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
+                    });
                 }
                 
-                // Stop refresh animation
-                swipeRefresh.setRefreshing(false);
-                
-                // Hide loading
-                com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
+                @Override
+                public void onError(String errorMessage) {
+                    android.util.Log.e("UserDashboard", "❌ Failed to load reports: " + errorMessage);
+                    runOnUiThread(() -> {
+                        swipeRefresh.setRefreshing(false);
+                        com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
+                        Toast.makeText(UserDashboardActivity.this, "Failed to load reports: " + errorMessage, Toast.LENGTH_SHORT).show();
+                    });
+                }
             });
-            } catch (Exception e) {
-                runOnUiThread(() -> {
-                    com.example.blottermanagementsystem.utils.GlobalLoadingManager.hide();
-                    swipeRefresh.setRefreshing(false);
-                });
-            }
-        });
     }
     
     @Override
