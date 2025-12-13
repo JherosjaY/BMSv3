@@ -1287,23 +1287,39 @@ public class UserDashboardActivity extends BaseActivity {
     private void updateEmptyStateMessage() {
         if (emptyStateTitle == null || emptyStateMessage == null) return;
         
+        // Find the icon CardView and update its background color
+        androidx.cardview.widget.CardView iconCard = emptyState != null ? 
+            (androidx.cardview.widget.CardView) emptyState.findViewById(android.R.id.icon) : null;
+        
         switch (currentFilter) {
             case "pending":
                 emptyStateTitle.setText("No Pending Reports");
                 emptyStateMessage.setText("You don't have any pending reports. File a new report to get started!");
+                if (iconCard != null) {
+                    iconCard.setCardBackgroundColor(0xFFF97316); // Orange for pending
+                }
                 break;
             case "ongoing":
                 emptyStateTitle.setText("No Ongoing Reports");
                 emptyStateMessage.setText("You don't have any ongoing reports. Check back later for updates!");
+                if (iconCard != null) {
+                    iconCard.setCardBackgroundColor(0xFF06B6D4); // Cyan for ongoing
+                }
                 break;
             case "resolved":
                 emptyStateTitle.setText("No Resolved Reports");
                 emptyStateMessage.setText("You don't have any resolved reports yet. Keep filing reports!");
+                if (iconCard != null) {
+                    iconCard.setCardBackgroundColor(0xFF10B981); // Green for resolved
+                }
                 break;
             case "all":
             default:
                 emptyStateTitle.setText("No Reports Yet");
                 emptyStateMessage.setText("You haven't filed any reports yet. Tap the + button to file your first report!");
+                if (iconCard != null) {
+                    iconCard.setCardBackgroundColor(0xFF2C5282); // Blue for all
+                }
                 break;
         }
     }
